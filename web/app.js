@@ -97,6 +97,8 @@ async function loadState() {
     }
     throw e;
   }
+  if (S.lastVer && S.lastVer !== S.state.version) toast('updated to ' + S.state.version);
+  S.lastVer = S.state.version;
   $('#studioName').textContent = S.state.studio || 'hq';
   document.title = 'hq · ' + (S.state.studio || '');
   const me = S.state.me;
@@ -108,6 +110,10 @@ function renderBanner() {
   const st = S.state, b = $('#banner');
   if (!st.gitOK) {
     b.innerHTML = `<div class="notice"><div class="grow"><b>git isn't installed.</b> <span class="dim">hq needs it to download and push games.</span></div><a href="https://git-scm.com/downloads" target="_blank"><button class="pri">get git</button></a></div>`;
+  } else if (st.update?.available) {
+    const u = st.update;
+    b.innerHTML = `<div class="notice"><div class="grow"><b>hq ${esc(u.latest)} is out</b> <span class="dim">(you have ${esc(st.version)}). ${u.applying ? 'updating, hang on a sec…' : st.autoUpdate ? 'it installs itself once nothing is running.' : ''}</span></div>${u.applying ? '' : '<button class="pri" id="upGo">update now</button>'}</div>`;
+    const go = $('#upGo'); if (go) go.onclick = applyUpdate;
   } else if (st.signedIn && !studioReady()) {
     const def = (st.me?.login || 'you') + '/fishmarket-hq';
     b.innerHTML = `<div class="notice"><div class="grow"><b>one-time setup:</b> <span class="dim">make the studio repo. it's private and holds the board, chat and the games list everyone shares.</span></div>
@@ -465,6 +471,17 @@ function renderTeam() {
   });
 }
 
+async function applyUpdate() {
+  try { await api('/api/update/apply', { body: {} }); } catch (e) { return fail(e); }
+  toast('updating… hq restarts in a few seconds');
+  const before = S.state.version;
+  for (let i = 0; i < 60; i++) {
+    await new Promise(r => setTimeout(r, 1000));
+    try { const st = await api('/api/state'); if (st.version !== before) { await refresh(true); return; } } catch (e) { }
+  }
+  fail('hq didn\'t come back, open it again from the start menu');
+}
+
 // ---------- settings
 function renderSettings() {
   const st = S.state;
@@ -483,6 +500,14 @@ function renderSettings() {
         <label>join a different studio repo (owner/name)</label><div class="row"><input id="sst" value="${esc(st.studioRepo || '')}"><button id="sStudio">use it</button></div>
         <div class="btns"><button class="small" id="sSetup">re-run studio setup</button></div>
       </div>
+      <div class="panel"><h2>updates</h2>
+        <div class="stat"><span>this version</span><b>${esc(st.version)}</b></div>
+        <div class="stat"><span>latest</span><b>${esc(st.update?.latest || '—')}${st.update?.checked && !st.update.checked.startsWith('0001') ? ` <span class="dim">· checked ${ago(st.update.checked)}</span>` : ''}</b></div>
+        <div class="stat"><span>installed</span><b>${st.update?.installed ? 'yes' : 'running portable'}</b></div>
+        ${st.update?.error ? `<p class="dim" style="font-size:12px">${esc(st.update.error)}</p>` : ''}
+        <div class="checks"><label><input type="checkbox" id="sAuto" ${st.autoUpdate ? 'checked' : ''}> update automatically</label></div>
+        <div class="btns"><button class="small" id="sCheck">check now</button>${st.update?.available ? '<button class="small pri" id="sUpd">update to ' + esc(st.update.latest) + '</button>' : ''}</div>
+      </div>
       <div class="panel"><h2>github</h2>
         <div class="stat"><span>signed in as</span><b>${esc(st.me?.login)}</b></div>
         <div class="stat"><span>token from</span><b>${esc(st.tokenFrom)}</b></div>
@@ -492,6 +517,9 @@ function renderSettings() {
   $('#sSave').onclick = async () => { try { await api('/api/settings', { body: { workspace: $('#sw').value, godot: $('#sgd').value } }); toast('saved'); refresh(); } catch (e) { fail(e); } };
   $('#sStudio').onclick = async () => { try { await api('/api/settings', { body: { studio: $('#sst').value } }); toast('switched'); refresh(true); } catch (e) { fail(e); } };
   $('#sSetup').onclick = () => runJob(api('/api/studio/setup', { body: { repo: st.studioRepo || (st.me.login + '/fishmarket-hq'), name: st.studio } }));
+  $('#sAuto').onchange = async e => { try { await api('/api/settings', { body: { auto: e.target.checked } }); refresh(); } catch (er) { fail(er); } };
+  $('#sCheck').onclick = async () => { try { const u = await api('/api/update/check', { body: {} }); toast(u.available ? u.latest + ' is available' : u.error || 'you\'re on the latest'); refresh(); } catch (e) { fail(e); } };
+  if ($('#sUpd')) $('#sUpd').onclick = applyUpdate;
   $('#sOut').onclick = async () => { await api('/api/signout', { body: {} }); refresh(true); };
 }
 

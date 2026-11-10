@@ -51,17 +51,37 @@ func main() {
 	port := flag.Int("port", 7313, "port to serve on (localhost only)")
 	noBrowser := flag.Bool("no-browser", false, "don't open the browser")
 	showVer := flag.Bool("version", false, "print version")
+	portable := flag.Bool("portable", false, "run from here, don't install")
+	afterUpdate := flag.Bool("after-update", false, "internal: relaunched by the updater")
 	flag.Parse()
 	if *showVer {
 		fmt.Println("hq", version)
 		return
 	}
 
+	if !*portable && !*afterUpdate {
+		if target := selfInstall(); target != "" {
+			args := []string{"--port", fmt.Sprint(*port)}
+			if *noBrowser {
+				args = append(args, "--no-browser")
+			}
+			if err := relaunch(target, args...); err == nil {
+				fmt.Println("starting the installed copy:", target)
+				return
+			}
+		}
+	}
+	go cleanupOld()
+
 	key := loadKey()
 	addr := fmt.Sprintf("127.0.0.1:%d", *port)
 	url := fmt.Sprintf("http://%s/#k=%s", addr, key)
 
 	ln, err := net.Listen("tcp", addr)
+	for i := 0; err != nil && *afterUpdate && i < 40; i++ { // old copy is still letting go of the port
+		time.Sleep(250 * time.Millisecond)
+		ln, err = net.Listen("tcp", addr)
+	}
 	if err != nil {
 		// already running? then just open it
 		req, _ := http.NewRequest("GET", "http://"+addr+"/api/ping", nil)
@@ -80,17 +100,28 @@ func main() {
 	st := loadStore()
 	s := &Server{store: st, jobs: newJobs(), key: key}
 	s.gh = newGH(s.token)
+	s.upd = &Updater{gh: s.gh}
 	if st.Get().Token == "" {
 		s.cliToken = ghCLIToken()
 	}
 
 	fmt.Printf("hq %s running at %s\nkeep this window open while you use it.\n", version, url)
-	if !*noBrowser {
+	if !*noBrowser && !*afterUpdate { // after an update the open tab just carries on
 		go func() { time.Sleep(300 * time.Millisecond); _ = openURL(url) }()
 	}
 	srv := &http.Server{Handler: s.routes(), ReadHeaderTimeout: 10 * time.Second}
-	if err := srv.Serve(ln); err != nil {
+	s.restart = func(exe string) {
+		_ = srv.Close()
+		if err := relaunch(exe, "--after-update", "--port", fmt.Sprint(*port)); err != nil {
+			fmt.Fprintln(os.Stderr, "restart failed, open hq again:", err)
+		}
+		os.Exit(0)
+	}
+	go s.upd.loop(func() bool { return !s.store.Get().NoAutoUpdate }, func() bool { return s.jobs.Running() == 0 }, s.restart)
+	if err := srv.Serve(ln); err != nil && err != http.ErrServerClosed {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
+	select {} // closed for an update: restart() relaunches and exits
+
 }

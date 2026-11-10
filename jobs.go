@@ -142,3 +142,17 @@ func redact(args []string) []string {
 	}
 	return out
 }
+
+func (js *Jobs) Running() int {
+	js.mu.Lock()
+	defer js.mu.Unlock()
+	n := 0
+	for _, j := range js.all {
+		j.mu.Lock()
+		if !j.done {
+			n++
+		}
+		j.mu.Unlock()
+	}
+	return n
+}

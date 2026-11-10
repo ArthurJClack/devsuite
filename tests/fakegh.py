@@ -50,6 +50,17 @@ class H(BaseHTTPRequestHandler):
     def do_DELETE(self): self.route("DELETE")
 
     def route(self, m):
+        if self.path.startswith("/dl/"):  # release asset downloads (public, no auth)
+            f = os.path.join(os.environ.get("FAKE_DL", "/nonexistent"), os.path.basename(self.path))
+            if not os.path.isfile(f):
+                return self.send(404, {"message": "Not Found"})
+            data = open(f, "rb").read()
+            self.send_response(200); self.send_header("Content-Length", str(len(data))); self.end_headers()
+            return self.wfile.write(data)
+        ml = re.match(r"^/repos/([^/]+/[^/]+)/releases/latest$", self.path)
+        if ml:  # public repo: no auth needed
+            rs = releases.get(ml.group(1), [])
+            return self.send(200, rs[0]) if rs else self.send(404, {"message": "Not Found"})
         if self.headers.get("Authorization") != "Bearer good-token":
             return self.send(401, {"message": "Bad credentials"})
         u = urlparse(self.path)
@@ -180,4 +191,7 @@ if __name__ == "__main__":
     # seed a release so the dashboard has numbers
     releases["arthur/shitboxrally-releases"] = [{"tag_name": "v0.6.5.3", "name": "0.6.5.3", "prerelease": False, "html_url": "x",
                                                  "published_at": now(), "assets": [{"download_count": 812}, {"download_count": 40}]}]
+    if os.environ.get("FAKE_TAG"):
+        releases["arthur/devsuite"] = [{"tag_name": os.environ["FAKE_TAG"], "body": "new stuff", "html_url": "x", "assets": [
+            {"name": n, "browser_download_url": f"http://127.0.0.1:{PORT}/dl/{n}"} for n in ("hq.exe", "hq-linux", "hq-macos")]}]
     ThreadingHTTPServer(("127.0.0.1", PORT), H).serve_forever()

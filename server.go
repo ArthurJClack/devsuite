@@ -24,6 +24,9 @@ type Server struct {
 	teamMu sync.Mutex
 	teamAt time.Time
 
+	upd     *Updater
+	restart func(exe string)
+
 	meMu  sync.Mutex
 	meVal *ghUser
 	meTok string
@@ -120,6 +123,23 @@ func (s *Server) routes() http.Handler {
 		return ok(), s.saveTeam(t, "hq: update games")
 	})
 	h("POST /api/game/{id}/{op}", s.apiGameOp)
+	h("GET /api/update", func(w http.ResponseWriter, r *http.Request) (any, error) { return s.upd.Info(), nil })
+	h("POST /api/update/check", func(w http.ResponseWriter, r *http.Request) (any, error) { return s.upd.Check(), nil })
+	h("POST /api/update/apply", func(w http.ResponseWriter, r *http.Request) (any, error) {
+		if s.jobs.Running() > 0 {
+			return nil, fmt.Errorf("wait for the running job to finish first")
+		}
+		if !s.upd.Info().Available {
+			return nil, fmt.Errorf("no update available")
+		}
+		// answer first, then download + restart; the page reconnects on its own
+		go func() {
+			if err := s.upd.Apply(s.restart); err != nil {
+				fmt.Fprintln(os.Stderr, "update failed:", err)
+			}
+		}()
+		return ok(), nil
+	})
 	h("GET /api/remote", s.apiRemote)
 	h("GET /api/activity", s.apiActivity)
 	h("GET /api/board", func(w http.ResponseWriter, r *http.Request) (any, error) { return s.board() })
@@ -218,7 +238,7 @@ func (s *Server) apiState(w http.ResponseWriter, r *http.Request) (any, error) {
 	out := map[string]any{
 		"studio": t.Studio, "studioRepo": l.Studio, "chatIssue": t.ChatIssue, "workspace": l.Workspace,
 		"godot": findGodot(l.Godot), "godotSaved": l.Godot, "signedIn": false, "columns": columns,
-		"gitOK": hasGit(), "tokenFrom": map[bool]string{true: "pasted", false: "github cli"}[l.Token != ""],
+		"gitOK": hasGit(), "version": version, "update": s.upd.Info(), "autoUpdate": !l.NoAutoUpdate, "tokenFrom": map[bool]string{true: "pasted", false: "github cli"}[l.Token != ""],
 	}
 	if u, err := s.me(); err == nil {
 		out["signedIn"], out["me"] = true, u
@@ -278,6 +298,7 @@ func (s *Server) apiSettings(w http.ResponseWriter, r *http.Request) (any, error
 		Workspace *string
 		Godot     *string
 		Studio    *string
+		Auto      *bool
 	}
 	if err := readJSON(r, &in); err != nil {
 		return nil, err
@@ -291,6 +312,9 @@ func (s *Server) apiSettings(w http.ResponseWriter, r *http.Request) (any, error
 		}
 		if in.Studio != nil {
 			l.Studio = strings.TrimSpace(*in.Studio)
+		}
+		if in.Auto != nil {
+			l.NoAutoUpdate = !*in.Auto
 		}
 	})
 	s.teamMu.Lock()

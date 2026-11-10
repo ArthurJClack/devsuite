@@ -24,22 +24,39 @@ works with every game we have in dev: **SECRET** (rpg), **FOR/AGAINST** (rts), *
 - polling is cheap: github answers unchanged data with a 304 that doesn't count against the rate limit.
 - the page only answers on `127.0.0.1`, and only with the key hq opens it with.
 
-## run it
+## install
+
+**windows**, pick one:
+- download [`hq.exe`](https://github.com/ArthurJClack/devsuite/releases/latest/download/hq.exe) and double-click it
+- or paste this in powershell (also installs git if you don't have it):
+  ```powershell
+  irm https://raw.githubusercontent.com/ArthurJClack/devsuite/main/install.ps1 | iex
+  ```
+
+**mac / linux:** `curl -fsSL https://raw.githubusercontent.com/ArthurJClack/devsuite/main/install.sh | sh`
+
+the first run installs hq to `%LOCALAPPDATA%\Programs\hq` (start menu + desktop shortcut), then opens it in your browser. an invite package from a teammate does the same thing and also joins you to the studio.
+
+windows might say "windows protected your pc" because the exe isn't signed: more info → run anyway.
+
+then: sign in ("use my github cli login" if you have `gh`, or paste a token: the link opens github with the right boxes ticked). first person only: hit **set it up** on the banner to make the studio repo.
 
 needs [git](https://git-scm.com/downloads). godot for opening games.
 
-1. download `hq.exe` from releases (or get a package from someone on the team)
-2. double-click it, it opens in your browser
-3. sign in: "use my github cli login" if you have `gh`, or paste a token (the link opens github with the right boxes ticked)
-4. first person only: hit **set it up** on the banner to make the studio repo
+## updates
+
+hq checks this repo's releases on start and every 3 hours. when there's a new one it downloads it, swaps itself and restarts on the same port once nothing is running. your open tab keeps working. turn it off or update by hand in settings → updates. `--portable` runs without installing.
+
+to ship a new version: `git tag v0.2.0 && git push origin v0.2.0`. actions tests it, builds windows/mac/linux and makes the release; everyone's hq picks it up.
 
 ```sh
 go build -o hq .            # or: GOOS=windows go build -o hq.exe .
-./hq                        # --port 7313 --no-browser --version
+./hq                        # --port 7313 --no-browser --portable --version
 ```
 
 ## dev
 
 - go 1.24, no dependencies. ui is plain html/css/js in `web/`, embedded in the exe.
 - `tests/e2e.sh` runs the real binary against a fake github (`tests/fakegh.py`) and local bare repos: sign in, studio setup, download all 4 games, push/pull dev, side branch merge, dev → main, board, chat, team, packages.
+- `tests/update.sh`: an old build installs itself from a downloads folder, finds a newer fake release, updates and comes back on the same port.
 - releases: push a tag `v*` and actions builds windows / mac / linux.

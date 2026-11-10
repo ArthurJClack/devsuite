@@ -75,6 +75,8 @@ type Local struct {
 	Godot     string `json:"godot,omitempty"`
 	Studio    string `json:"studio,omitempty"` // owner/repo of the studio repo
 	Team      *Team  `json:"team,omitempty"`   // last known team file (offline fallback)
+
+	NoAutoUpdate bool `json:"noAutoUpdate,omitempty"`
 }
 
 type Store struct {
