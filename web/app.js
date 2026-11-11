@@ -231,8 +231,8 @@ function gameTile(g) {
     <div class="stat"><span>you</span><b>${l.cloned ? `${esc(l.branch)}${l.dirty ? ` <span class="tag warn">${l.dirty} changed</span>` : ''}${l.behind ? ` <span class="tag">↓${l.behind}</span>` : ''}${l.ahead ? ` <span class="tag">↑${l.ahead}</span>` : ''}` : '<span class="dim">not downloaded</span>'}</b></div>
     ${r.last ? `<p class="dim" style="font-size:12px;margin:8px 0 0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(r.last.who)}: ${esc(r.last.msg)} · ${ago(r.last.at)}</p>` : ''}
     ${r.error ? `<p class="tag bad" style="margin-top:8px;white-space:normal">${esc(r.error)}</p>` : ''}
-    <div class="btns">${l.cloned ? `<button class="small" data-op="pull">pull dev</button><button class="small pri" data-op="push">push dev</button><button class="small" data-op="editor">open</button>`
-      : `<button class="small ice" data-op="clone">download</button>`}</div></div>`;
+    <div class="btns">${l.cloned ? `<button class="small" data-op="pull">pull dev</button><button class="small pri" data-op="push">push dev</button><button class="small" data-op="editor">open</button><button class="small ice" data-op="playdev">▶ dev</button>`
+      : `<button class="small ice" data-op="clone">download</button><button class="small" data-op="playdev">▶ dev</button>`}</div></div>`;
 }
 
 function bindTiles(root) {
@@ -253,7 +253,7 @@ async function gameOp(id, op, path) {
   if (op === 'publish' || op === 'hotfix') {
     if (!await confirmBox(`${op} ${g.name}?`, `runs <code>${esc(op === 'publish' ? g.publish : g.hotfix)}</code> in its own window. players get it.`, op)) return;
   }
-  const jobs = ['clone', 'pull', 'push', 'tomain'];
+  const jobs = ['clone', 'pull', 'push', 'tomain', 'playdev'];
   if (jobs.includes(op)) return runJob(api(`/api/game/${id}/${op}`, { body: {} }));
   try { await api(`/api/game/${id}/${op}`, { body: { path } }); toast(op === 'tool' ? `started ${path}` : 'opened'); } catch (e) { fail(e); }
 }
@@ -275,13 +275,13 @@ function renderGames() {
             <button class="ice" data-op="pull">↓ pull dev</button><button class="pri" data-op="push">↑ push to dev</button><button data-op="tomain">dev → main</button>
           </div>
           <div class="btns">
-            <button class="small" data-op="editor">godot editor</button><button class="small" data-op="play">play</button><button class="small" data-op="folder">folder</button>
+            <button class="small" data-op="editor">godot editor</button><button class="small" data-op="play" title="runs your copy, with your changes">play mine</button><button class="small ice" data-op="playdev" title="runs the latest dev from github in a separate copy, doesn't touch yours">▶ play dev</button><button class="small" data-op="folder">folder</button>
             <button class="small ghost" data-op="github">github</button><button class="small ghost" data-op="releases">releases</button>
             ${g.publish ? '<button class="small" data-op="publish">publish update</button>' : ''}${g.hotfix ? '<button class="small" data-op="hotfix">hotfix</button>' : ''}
           </div>
           ${l.tools?.length ? `<details><summary>tools (${l.tools.length})</summary><div class="tools">${l.tools.map(t => `<button data-op="tool" data-path="${esc(t.path)}" title="${esc(t.path)}">${esc(t.name)}</button>`).join('')}</div></details>` : ''}`
         : `<p class="dim">not on this computer yet. downloads the source into <span class="mono">${esc(l.path)}</span>${g.dev !== '' ? ', on the dev branch' : ''}.</p>
-           <div class="btns"><button class="ice" data-op="clone">download source</button><button class="ghost small" data-op="github">github</button><button class="ghost small" data-op="releases">releases</button></div>`}
+           <div class="btns"><button class="ice" data-op="clone">download source</button><button data-op="playdev">▶ play dev</button><button class="ghost small" data-op="github">github</button><button class="ghost small" data-op="releases">releases</button></div>`}
       </div>`;
     }).join('')}</div>`;
   bindTiles(p);

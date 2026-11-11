@@ -208,3 +208,41 @@ func ghMerge(j *Job, gh *GH, repo, base, head string) error {
 	}
 	return err
 }
+
+// devCopy keeps a separate, read-only copy of the latest dev at <workspace>/.dev/<game> so you can
+// play dev without touching your own checkout. Godot's import cache (.godot/) is gitignored and
+// survives between updates, so only the first launch imports everything.
+func devCopy(j *Job, ws string, g Game) (string, error) {
+	dev := g.devBranch()
+	dir := filepath.Join(ws, ".dev", g.ID)
+	main := gamePath(ws, g)
+	if err := os.MkdirAll(filepath.Join(ws, ".dev"), 0o755); err != nil {
+		return "", err
+	}
+	if fileExists(filepath.Join(dir, ".git")) || dirExists(filepath.Join(dir, ".git")) {
+		if _, err := j.Run(dir, "git", "fetch", "--depth", "1", "origin", dev); err != nil {
+			return "", err
+		}
+		if _, err := j.Run(dir, "git", "checkout", "--detach", "-f", "FETCH_HEAD"); err != nil {
+			return "", err
+		}
+		_, err := j.Run(dir, "git", "clean", "-fdq", "-e", ".godot", "-e", "*/.godot")
+		return dir, err
+	}
+	if fileExists(filepath.Join(main, ".git", "HEAD")) {
+		// share objects with your clone: fast, no second download
+		if _, err := j.Run(main, "git", "fetch", "origin", dev); err != nil {
+			return "", err
+		}
+		j.Run(main, "git", "worktree", "prune")
+		_, err := j.Run(main, "git", "worktree", "add", "--detach", "-f", dir, "origin/"+dev)
+		return dir, err
+	}
+	_, err := j.Run(ws, "git", "clone", "--progress", "--depth", "1", "-b", dev, repoURL(g.Repo), dir)
+	return dir, err
+}
+
+func dirExists(p string) bool {
+	st, err := os.Stat(p)
+	return err == nil && st.IsDir()
+}

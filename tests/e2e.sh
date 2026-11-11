@@ -29,6 +29,8 @@ t={'studio':'fish market studios','games':[
  {'id':'shitbox','name':'SHITBOX RALLY','genre':'racing','repo':'arthur/shitbox-rally','releases':'arthur/shitboxrally-releases','color':'#ffd166'}]}
 print(json.dumps(t))")}
 EOF
+mkdir -p "$T/bin"; printf '#!/bin/sh\necho "$@" >> "%s/godot.log"\n[ "$1" = --headless ] && mkdir -p "$3/.godot"\nexit 0\n' "$T" > "$T/bin/godot"; chmod +x "$T/bin/godot"
+export PATH="$T/bin:$PATH"
 python3 tests/fakegh.py "$R" 7398 & FAKE=$!
 HQ_API=http://127.0.0.1:7398 HQ_GIT_BASE="file://$R/" "$T/hq" --port 7399 --no-browser > "$T/hq.log" 2>&1 & HQ=$!
 trap 'kill $FAKE $HQ 2>/dev/null || true' EXIT
@@ -63,6 +65,16 @@ git --git-dir "$R/arthur/secret.git" log dev -1 --format=%s | grep -q "added a l
 # a teammate pushes to dev; we pull
 w2=$T/mate; G clone -q -b dev "$R/arthur/secret.git" "$w2"; echo hi > "$w2/mate.txt"; G -C "$w2" add -A; G -C "$w2" commit -qm "mate work"; G -C "$w2" push -q origin dev
 c -X POST http://127.0.0.1:7399/api/game/secret/pull -d '{}' | wait_job >/dev/null && [ -f "$T/ws/secret/mate.txt" ] && ok "pull dev got teammate's work"
+
+# play dev: separate copy of latest dev, launched in godot, your checkout untouched
+echo "wip" > "$T/ws/secret/wip.txt"
+c -X POST http://127.0.0.1:7399/api/game/secret/playdev -d '{}' | wait_job >/dev/null
+[ -f "$T/ws/.dev/secret/mate.txt" ] && [ ! -f "$T/ws/.dev/secret/wip.txt" ] && [ -f "$T/ws/secret/wip.txt" ] && ok "play dev: separate dev copy, your work untouched"
+grep -q -- "--headless --path $T/ws/.dev/secret --import" "$T/godot.log" && grep -q -- "^--path $T/ws/.dev/secret$" "$T/godot.log" && ok "play dev: imported once + launched godot"
+G -C "$w2" pull -q; echo more > "$w2/more.txt"; G -C "$w2" add -A; G -C "$w2" commit -qm "more"; G -C "$w2" push -q origin dev
+c -X POST http://127.0.0.1:7399/api/game/secret/playdev -d '{}' | wait_job >/dev/null
+[ -f "$T/ws/.dev/secret/more.txt" ] && [ "$(grep -c -- --import "$T/godot.log")" = 1 ] && ok "play dev again: updated, no re-import"
+rm "$T/ws/secret/wip.txt"
 
 # side branch → push merges into dev on github
 G -C "$T/ws/shells" checkout -qb arthur/gun; echo bang > "$T/ws/shells/gun.txt"

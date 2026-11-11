@@ -377,6 +377,30 @@ func (s *Server) apiGameOp(w http.ResponseWriter, r *http.Request) (any, error) 
 			}
 			return nil
 		}), nil
+	case "playdev":
+		godot := findGodot(l.Godot)
+		if godot == "" {
+			return nil, fmt.Errorf("couldn't find godot: set its path in settings")
+		}
+		return s.jobs.Start("play dev · "+g.Name, g.ID, env, func(j *Job) error {
+			dir, err := devCopy(j, l.Workspace, g)
+			if err != nil {
+				return err
+			}
+			proj := findGodotProject(dir)
+			if proj == "" {
+				return fmt.Errorf("no project.godot on %s's dev branch", g.Name)
+			}
+			j.Printf("dev is at %s\n", gitQuick(dir, "log", "-1", "--format=%h %s (%an, %ar)"))
+			if !dirExists(filepath.Join(proj, ".godot")) {
+				j.Printf("first time: importing assets, can take a few minutes…\n")
+				if _, err := j.Run(proj, godot, "--headless", "--path", proj, "--import"); err != nil {
+					j.Printf("import exited with an error, trying to launch anyway\n")
+				}
+			}
+			j.Printf("launching…\n")
+			return startDetached(godot, "--path", proj)
+		}), nil
 	case "folder":
 		if err := needClone(); err != nil {
 			return nil, err
