@@ -33,9 +33,9 @@ jobs:
           V="${{ github.event.release.tag_name || inputs.tag || github.ref_name }}"
           echo "TAG=$V" >> "$GITHUB_ENV"
           mkdir dist
-          GOOS=windows GOARCH=amd64 go build -ldflags "-s -w -X main.version=$V" -o dist/hq.exe .
-          GOOS=darwin  GOARCH=arm64 go build -ldflags "-s -w -X main.version=$V" -o dist/hq-macos .
-          GOOS=linux   GOARCH=amd64 go build -ldflags "-s -w -X main.version=$V" -o dist/hq-linux .
+          GOOS=windows GOARCH=amd64 go build -ldflags "-X main.version=$V" -o dist/hq.exe .
+          GOOS=darwin  GOARCH=arm64 go build -ldflags "-X main.version=$V" -o dist/hq-macos .
+          GOOS=linux   GOARCH=amd64 go build -ldflags "-X main.version=$V" -o dist/hq-linux .
           cp install.bat dist/
       - name: release
         if: github.event_name == 'release' || startsWith(github.ref, 'refs/tags/') || inputs.tag != ''
