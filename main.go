@@ -51,7 +51,6 @@ func main() {
 	port := flag.Int("port", 7313, "port to serve on (localhost only)")
 	noBrowser := flag.Bool("no-browser", false, "don't open the browser")
 	showVer := flag.Bool("version", false, "print version")
-	portable := flag.Bool("portable", false, "run from here, don't install")
 	afterUpdate := flag.Bool("after-update", false, "internal: relaunched by the updater")
 	flag.Parse()
 	if *showVer {
@@ -59,18 +58,6 @@ func main() {
 		return
 	}
 
-	if !*portable && !*afterUpdate {
-		if target := selfInstall(); target != "" {
-			args := []string{"--port", fmt.Sprint(*port)}
-			if *noBrowser {
-				args = append(args, "--no-browser")
-			}
-			if err := relaunch(target, args...); err == nil {
-				fmt.Println("starting the installed copy:", target)
-				return
-			}
-		}
-	}
 	go cleanupOld()
 
 	key := loadKey()

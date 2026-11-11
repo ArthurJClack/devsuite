@@ -503,7 +503,7 @@ function renderSettings() {
       <div class="panel"><h2>updates</h2>
         <div class="stat"><span>this version</span><b>${esc(st.version)}</b></div>
         <div class="stat"><span>latest</span><b>${esc(st.update?.latest || '—')}${st.update?.checked && !st.update.checked.startsWith('0001') ? ` <span class="dim">· checked ${ago(st.update.checked)}</span>` : ''}</b></div>
-        <div class="stat"><span>installed</span><b>${st.update?.installed ? 'yes' : 'running portable'}</b></div>
+        <div class="stat"><span>installed</span><b>${st.update?.installed ? 'yes' : 'no (running from its own folder)'}</b></div>
         ${st.update?.error ? `<p class="dim" style="font-size:12px">${esc(st.update.error)}</p>` : ''}
         <div class="checks"><label><input type="checkbox" id="sAuto" ${st.autoUpdate ? 'checked' : ''}> update automatically</label></div>
         <div class="btns"><button class="small" id="sCheck">check now</button>${st.update?.available ? '<button class="small pri" id="sUpd">update to ' + esc(st.update.latest) + '</button>' : ''}</div>

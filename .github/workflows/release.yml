@@ -33,6 +33,12 @@ jobs:
           V="${{ github.event.release.tag_name || inputs.tag || github.ref_name }}"
           echo "TAG=$V" >> "$GITHUB_ENV"
           mkdir dist
+          # exe icon + version info (makes defender and windows treat it like a normal app)
+          N=$(echo "${V#v}" | grep -Eo '^[0-9]+(\.[0-9]+){0,2}' || echo 0.0.0)
+          go run github.com/tc-hib/go-winres@v0.3.3 simply --arch amd64 --icon winres/icon.png --manifest cli \
+            --product-name "hq" --file-description "fish market studios hq" --company-name "fish market studios" \
+            --copyright "fish market studios" --original-filename hq.exe --product-version "$N.0" --file-version "$N.0" \
+            || echo "::warning::go-winres failed, building without version info"
           GOOS=windows GOARCH=amd64 go build -ldflags "-X main.version=$V" -o dist/hq.exe .
           GOOS=darwin  GOARCH=arm64 go build -ldflags "-X main.version=$V" -o dist/hq-macos .
           GOOS=linux   GOARCH=amd64 go build -ldflags "-X main.version=$V" -o dist/hq-linux .

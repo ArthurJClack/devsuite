@@ -1,7 +1,7 @@
 package main
 
-// install + auto-update. hq installs itself the first time it's double-clicked from anywhere
-// (Downloads, an invite zip), then keeps itself current from the devsuite releases.
+// auto-update from the devsuite releases. installing (folder + shortcuts) is install.ps1's job:
+// an exe that copies itself around and spawns powershell looks like malware to antivirus.
 
 import (
 	"fmt"
@@ -101,27 +101,6 @@ func sameFile(a, b string) bool {
 	return strings.EqualFold(ra, rb)
 }
 
-func copyFile(src, dst string, mode os.FileMode) error {
-	in, err := os.Open(src)
-	if err != nil {
-		return err
-	}
-	defer in.Close()
-	tmp := dst + ".tmp"
-	out, err := os.OpenFile(tmp, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, mode)
-	if err != nil {
-		return err
-	}
-	if _, err := io.Copy(out, in); err != nil {
-		out.Close()
-		return err
-	}
-	if err := out.Close(); err != nil {
-		return err
-	}
-	return os.Rename(tmp, dst)
-}
-
 func exeVersion(path string) string {
 	c := exec.Command(path, "--version")
 	hideWindow(c)
@@ -134,36 +113,6 @@ func exeVersion(path string) string {
 		return ""
 	}
 	return f[1]
-}
-
-// selfInstall: running from somewhere that isn't the install folder? copy in (unless the
-// installed copy is already as new), carry team.json along, make shortcuts, hand off.
-// returns the path to relaunch, or "" to keep running this copy.
-func selfInstall() string {
-	exe, err := os.Executable()
-	if err != nil || version == "dev" {
-		return ""
-	}
-	dir := installDir()
-	target := filepath.Join(dir, exeName())
-	if sameFile(exe, target) {
-		return ""
-	}
-	if err := os.MkdirAll(dir, 0o755); err != nil {
-		return ""
-	}
-	if team := filepath.Join(filepath.Dir(exe), "team.json"); fileExists(team) {
-		_ = copyFile(team, filepath.Join(dir, "team.json"), 0o644)
-	}
-	if !fileExists(target) || newer(version, exeVersion(target)) || exeVersion(target) == "" {
-		if err := copyFile(exe, target, 0o755); err != nil {
-			fmt.Fprintln(os.Stderr, "couldn't install, running from here:", err)
-			return ""
-		}
-		fmt.Println("installed hq", version, "to", dir)
-	}
-	makeShortcuts(target)
-	return target
 }
 
 // ---------------------------------------------------------------- updater

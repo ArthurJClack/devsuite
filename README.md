@@ -26,18 +26,17 @@ works with every game we have in dev: **SECRET** (rpg), **FOR/AGAINST** (rts), *
 
 ## install
 
-**windows**, pick one:
-- download [`hq.exe`](https://github.com/ArthurJClack/devsuite/releases/latest/download/hq.exe) and double-click it
-- or paste this in powershell (also installs git if you don't have it):
-  ```powershell
-  irm https://raw.githubusercontent.com/ArthurJClack/devsuite/main/install.ps1 | iex
-  ```
+**windows:** paste this in powershell (installs to `%LOCALAPPDATA%\Programs\hq`, adds start menu + desktop shortcuts, installs git if missing):
+```powershell
+irm https://raw.githubusercontent.com/ArthurJClack/devsuite/main/install.ps1 | iex
+```
+or grab [`hq.exe`](https://github.com/ArthurJClack/devsuite/releases/latest/download/hq.exe) and run it from any folder.
 
 **mac / linux:** `curl -fsSL https://raw.githubusercontent.com/ArthurJClack/devsuite/main/install.sh | sh`
 
-the first run installs hq to `%LOCALAPPDATA%\Programs\hq` (start menu + desktop shortcut), then opens it in your browser. an invite package from a teammate does the same thing and also joins you to the studio.
+an invite package from a teammate is hq + the studio settings: unzip anywhere and run.
 
-windows might say "windows protected your pc" because the exe isn't signed: more info → run anyway.
+the exe isn't code-signed, so windows defender can false-flag it. if it does: windows security → virus & threat protection → manage settings → exclusions → add folder `%LOCALAPPDATA%\Programs\hq`, then rerun the installer. (hq deliberately doesn't install itself or touch powershell, which keeps antivirus calmer.)
 
 then: sign in ("use my github cli login" if you have `gh`, or paste a token: the link opens github with the right boxes ticked). first person only: hit **set it up** on the banner to make the studio repo.
 
@@ -45,18 +44,18 @@ needs [git](https://git-scm.com/downloads). godot for opening games.
 
 ## updates
 
-hq checks this repo's releases on start and every 3 hours. when there's a new one it downloads it, swaps itself and restarts on the same port once nothing is running. your open tab keeps working. turn it off or update by hand in settings → updates. `--portable` runs without installing.
+hq checks this repo's releases on start and every 3 hours. when there's a new one it downloads it, swaps itself and restarts on the same port once nothing is running. your open tab keeps working. turn it off or update by hand in settings → updates. 
 
 to ship a new version: `git tag v0.2.0 && git push origin v0.2.0`. actions tests it, builds windows/mac/linux and makes the release; everyone's hq picks it up.
 
 ```sh
 go build -o hq .            # or: GOOS=windows go build -o hq.exe .
-./hq                        # --port 7313 --no-browser --portable --version
+./hq                        # --port 7313 --no-browser --version
 ```
 
 ## dev
 
 - go 1.24, no dependencies. ui is plain html/css/js in `web/`, embedded in the exe.
 - `tests/e2e.sh` runs the real binary against a fake github (`tests/fakegh.py`) and local bare repos: sign in, studio setup, download all 4 games, push/pull dev, side branch merge, dev → main, board, chat, team, packages.
-- `tests/update.sh`: an old build installs itself from a downloads folder, finds a newer fake release, updates and comes back on the same port.
+- `tests/update.sh`: an old build finds a newer fake release, updates itself and comes back on the same port.
 - releases: push a tag `v*` and actions builds windows / mac / linux.

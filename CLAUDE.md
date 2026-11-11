@@ -2,7 +2,7 @@
 
 fish market studios' team app. go backend (no deps) + plain js ui in `web/` (embedded). github is the only backend: games = source repos, board + chat = issues in the studio repo, shared config = `hq.json` there.
 
-- files: `main.go` (start/flags), `server.go` (http api), `git.go` (pull/push/merge), `team.go` (studio repo, board, chat, collaborators, invite zip), `github.go` (rest client w/ etag cache), `jobs.go` (slow ops + live logs), `tools.go` (script discovery, godot), `update.go` (self-install + auto-update from devsuite releases), `proc_*.go` / `shortcut_*.go` (per-os launching, shortcuts)
+- files: `main.go` (start/flags), `server.go` (http api), `git.go` (pull/push/merge), `team.go` (studio repo, board, chat, collaborators, invite zip), `github.go` (rest client w/ etag cache), `jobs.go` (slow ops + live logs), `tools.go` (script discovery, godot), `update.go` (auto-update from devsuite releases), `proc_*.go` / `relaunch_*.go` (per-os launching). installing is install.ps1's job: keep the exe from copying itself around or spawning powershell, antivirus flags that
 - default games list is `defaultTeam()` in config.go; the live one is `hq.json` in the studio repo
 - lowercase, casual copy in the ui
 - keep it one exe, no new deps
