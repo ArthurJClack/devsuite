@@ -191,15 +191,32 @@ class H(BaseHTTPRequestHandler):
                 return self.send(404, {"message": "Not Found"})
             return self.send(200, {"ahead_by": int(r.stdout.strip())})
         if rest == "/commits":
-            r = git(repo, "log", q.get("sha", "HEAD"), "-n", q.get("per_page", "10"), "--format=%H%x1f%an%x1f%aI%x1f%s")
+            per, page = int(q.get("per_page", "10")), int(q.get("page", "1"))
+            r = git(repo, "log", q.get("sha", "HEAD"), "-n", str(per), "--skip", str((page - 1) * per), "--format=%H%x1f%an%x1f%aI%x1f%P%x1f%B%x1e")
             if r.returncode:
                 return self.send(409, {"message": "Git Repository is empty."})
             out = []
-            for line in r.stdout.strip().splitlines():
-                h, an, d, s = line.split("\x1f")
-                out.append({"sha": h, "html_url": f"https://github.com/{repo}/commit/{h}",
-                            "commit": {"message": s, "author": {"name": an, "date": d}}, "author": user(an)})
+            for rec in r.stdout.split("\x1e"):
+                rec = rec.strip("\n")
+                if not rec:
+                    continue
+                h, an, d, parents, msg = rec.split("\x1f")
+                out.append({"sha": h, "html_url": f"https://github.com/{repo}/commit/{h}", "parents": [{} for _ in parents.split()],
+                            "commit": {"message": msg.strip(), "author": {"name": an, "date": d}}, "author": user(an)})
             return self.send(200, out)
+        mcs = re.match(r"^/commits/([0-9a-f]+)$", rest)
+        if mcs:
+            r = git(repo, "show", "--numstat", "--format=%B%x1e", mcs.group(1))
+            if r.returncode:
+                return self.send(404, {"message": "No commit found"})
+            msg, _, stat = r.stdout.partition("\x1e")
+            flist, adds, dels = [], 0, 0
+            for line in stat.strip().splitlines():
+                a, d_, f = line.split("\t")
+                a, d_ = int(a) if a != "-" else 0, int(d_) if d_ != "-" else 0
+                adds += a; dels += d_
+                flist.append({"filename": f, "status": "modified", "additions": a, "deletions": d_})
+            return self.send(200, {"sha": mcs.group(1), "html_url": "x", "commit": {"message": msg.strip()}, "stats": {"additions": adds, "deletions": dels}, "files": flist})
         if rest == "/merges" and m == "POST":
             base, head = b["base"], b["head"]
             if git(repo, "merge-base", "--is-ancestor", head, base).returncode == 0:

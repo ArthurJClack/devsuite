@@ -138,7 +138,7 @@ func (s *Server) board() ([]Card, error) {
 	var cards []Card
 	add := func(list []ghIssue) {
 		for _, is := range list {
-			if is.PR != nil || hasLabel(is, chatLabel) || hasLabel(is, "hq:deleted") {
+			if is.PR != nil || hasLabel(is, chatLabel) || hasLabel(is, logLabel) || hasLabel(is, "hq:deleted") {
 				continue
 			}
 			cards = append(cards, toCard(is))
@@ -381,6 +381,9 @@ func (s *Server) importTemplate(j *Job, game string) error {
 		time.Sleep(importPace())
 	}
 	j.Printf("\nadded %d cards to the %s board\n", made, t.Name)
+	if made > 0 {
+		s.logEvent("card", game, fmt.Sprintf("📋 loaded the %s starter board (%d cards)", t.Name, made))
+	}
 	return nil
 }
 

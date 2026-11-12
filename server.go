@@ -121,7 +121,11 @@ func (s *Server) routes() http.Handler {
 			s.setTeam(&t)
 			return ok(), nil
 		}
-		return ok(), s.saveTeam(t, "hq: update games")
+		err := s.saveTeam(t, "hq: update games")
+		if err == nil {
+			s.logEvent("games", "", "🎮 edited the games list")
+		}
+		return ok(), err
 	})
 	h("POST /api/game/{id}/{op}", s.apiGameOp)
 	h("GET /api/update", func(w http.ResponseWriter, r *http.Request) (any, error) { return s.upd.Info(), nil })
@@ -157,13 +161,20 @@ func (s *Server) routes() http.Handler {
 		return ok(), nil
 	})
 	h("GET /api/activity", s.apiActivity)
+	h("GET /api/changes", s.apiChanges)
+	h("GET /api/log", func(w http.ResponseWriter, r *http.Request) (any, error) { return s.readLog() })
+	h("GET /api/changes/{game}/{sha}", s.apiChange)
 	h("GET /api/board", func(w http.ResponseWriter, r *http.Request) (any, error) { return s.board() })
 	h("POST /api/board", func(w http.ResponseWriter, r *http.Request) (any, error) {
 		var e CardEdit
 		if err := readJSON(r, &e); err != nil {
 			return nil, err
 		}
-		return s.editCard(0, e)
+		c, err := s.editCard(0, e)
+		if err == nil {
+			s.logEvent("card", c.Game, fmt.Sprintf("🗂 new card #%d **%s** in %s", c.Number, c.Title, c.Column))
+		}
+		return c, err
 	})
 	h("PATCH /api/board/{n}", func(w http.ResponseWriter, r *http.Request) (any, error) {
 		n, _ := strconv.Atoi(r.PathValue("n"))
@@ -171,7 +182,18 @@ func (s *Server) routes() http.Handler {
 		if err := readJSON(r, &e); err != nil {
 			return nil, err
 		}
-		return s.editCard(n, e)
+		c, err := s.editCard(n, e)
+		if err == nil {
+			switch {
+			case e.Delete:
+				s.logEvent("card", c.Game, fmt.Sprintf("🗑 deleted card #%d **%s**", c.Number, c.Title))
+			case e.Column != nil && e.Title == nil:
+				s.logEvent("card", c.Game, fmt.Sprintf("➡️ moved #%d **%s** to %s", c.Number, c.Title, c.Column))
+			default:
+				s.logEvent("card", c.Game, fmt.Sprintf("✏️ edited card #%d **%s** (%s)", c.Number, c.Title, c.Column))
+			}
+		}
+		return c, err
 	})
 	h("GET /api/board/{n}/comments", func(w http.ResponseWriter, r *http.Request) (any, error) {
 		n, _ := strconv.Atoi(r.PathValue("n"))
@@ -186,7 +208,11 @@ func (s *Server) routes() http.Handler {
 		if strings.TrimSpace(in.Text) == "" {
 			return nil, fmt.Errorf("empty comment")
 		}
-		return ok(), s.addCardComment(n, in.Text)
+		err := s.addCardComment(n, in.Text)
+		if err == nil {
+			s.logEvent("card", "", fmt.Sprintf("💬 commented on card #%d", n))
+		}
+		return ok(), err
 	})
 	h("GET /api/templates", func(w http.ResponseWriter, r *http.Request) (any, error) {
 		out := map[string]any{}
@@ -400,6 +426,7 @@ func (s *Server) apiGameOp(w http.ResponseWriter, r *http.Request) (any, error) 
 			if err := ghMerge(j, s.gh, g.Repo, g.mainBranch(), g.devBranch()); err != nil {
 				return err
 			}
+			s.logEvent("merge", g.ID, fmt.Sprintf("🔀 merged **%s** dev → main", g.Name))
 			_ = s.say(fmt.Sprintf("🚀 **%s**: dev merged into main by @%s", g.Name, login))
 			if fileExists(filepath.Join(dir, ".git", "HEAD")) {
 				j.Run(dir, "git", "fetch", "origin")
@@ -494,6 +521,9 @@ func (s *Server) apiTeamOp(w http.ResponseWriter, r *http.Request) (any, error) 
 			err := s.addMember(j, in.User, in.Repos, rm)
 			if err == nil && !rm {
 				_ = s.say("👋 invited @" + in.User + " to the team")
+				s.logEvent("team", "", fmt.Sprintf("👋 invited @%s (%s)", in.User, strings.Join(in.Repos, ", ")))
+			} else if err == nil {
+				s.logEvent("team", "", fmt.Sprintf("🚪 removed @%s (%s)", in.User, strings.Join(in.Repos, ", ")))
 			}
 			return err
 		}), nil
@@ -527,6 +557,8 @@ type ghCommit struct {
 }
 
 type ghRelease struct {
+	Body        string    `json:"body"`
+	Author      ghUser    `json:"author"`
 	TagName     string    `json:"tag_name"`
 	Name        string    `json:"name"`
 	HTMLURL     string    `json:"html_url"`

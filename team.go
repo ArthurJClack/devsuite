@@ -187,6 +187,17 @@ func (s *Server) setupStudio(j *Job, studio, name string) error {
 		}
 		t.ChatIssue = is.Number
 	}
+	if t.LogIssue == 0 {
+		j.Printf("starting the activity log…\n")
+		s.ensureLabel(studio, logLabel, "8b949e")
+		var lg ghIssue
+		if _, err := s.gh.Do("POST", "/repos/"+studio+"/issues", map[string]any{
+			"title": "📜 activity log", "labels": []string{logLabel},
+			"body": "hq writes everything the team does here: card changes, merges, publishes, invites.",
+		}, &lg); err == nil {
+			t.LogIssue = lg.Number
+		}
+	}
 	j.Printf("saving hq.json…\n")
 	return s.saveTeam(t, "hq: studio setup")
 }

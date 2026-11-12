@@ -187,6 +187,7 @@ function show(page) {
   localStorage.setItem('hqPage', page);
   render();
   if (page === 'team') loadTeam();
+  if (page === 'changes') loadChanges(true);
   if (page === 'board' || (page === 'dash' && Date.now() - S.board.at > 20000)) loadBoard();
   if (page === 'dash' && Date.now() - (S.remoteAt || 0) > 60000) loadRemote();
   if (page === 'chat' || page === 'dash') markRead();
@@ -197,7 +198,7 @@ function render() {
   if (!S.state) return;
   if (!S.state.signedIn) return renderSignin();
   $('#side').classList.remove('hidden');
-  ({ dash: renderDash, games: renderGames, board: renderBoard, chat: renderChat, team: renderTeam, settings: renderSettings })[S.page]();
+  ({ dash: renderDash, games: renderGames, board: renderBoard, changes: renderChanges, chat: renderChat, team: renderTeam, settings: renderSettings })[S.page]();
 }
 
 // ---------- sign in
@@ -599,6 +600,84 @@ function cardModal(c, col) {
       $('#csayGo', box).onclick = post;
       $('#csay', box).onkeydown = e => e.key === 'Enter' && post();
     }
+  });
+}
+
+// ---------- changes: every commit, release and team action, newest first
+const CH = { items: [], log: [], page: 1, more: false, loading: false, loaded: false, errors: [], game: '', branch: 'dev', types: { commit: true, release: true, event: true }, q: '', who: '', open: {} };
+async function loadChanges(reset) {
+  if (CH.loading) return;
+  CH.loading = true;
+  if (reset) { CH.page = 1; CH.items = []; }
+  try {
+    const qs = new URLSearchParams({ page: CH.page, branch: CH.branch, game: CH.game });
+    const [r, lg] = await Promise.all([api('/api/changes?' + qs), reset ? api('/api/log').catch(() => []) : Promise.resolve(null)]);
+    CH.items = CH.items.concat(r.changes); CH.more = r.more; CH.errors = r.errors || [];
+    if (lg) CH.log = lg;
+    CH.loaded = true;
+  } catch (e) { CH.errors = [e.message]; }
+  CH.loading = false;
+  softRender(['changes']);
+}
+function renderChanges() {
+  const p = $('#page-changes');
+  const q = CH.q.trim().toLowerCase();
+  let all = CH.items.concat(CH.log.filter(e => !CH.game || e.game === CH.game || !e.game))
+    .filter(c => CH.types[c.kind])
+    .filter(c => !CH.who || c.who === CH.who)
+    .filter(c => !q || (c.msg + ' ' + (c.body || '') + ' ' + c.who + ' ' + (c.sha || '') + ' ' + (c.tag || '')).toLowerCase().includes(q))
+    .sort((a, b) => new Date(b.at) - new Date(a.at));
+  const people = [...new Set(CH.items.concat(CH.log).map(c => c.who).filter(Boolean))].sort();
+  let day = '', rows = '';
+  for (const c of all) {
+    const d = new Date(c.at).toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' });
+    if (d !== day) { rows += `<div class="chday">${esc(d)}</div>`; day = d; }
+    const g = c.game ? gameById(c.game) : null;
+    const time = new Date(c.at).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+    const gtag = g ? `<span class="tag c" style="--c:${esc(g.color)}">${esc(g.id)}</span>` : '';
+    if (c.kind === 'release') {
+      rows += `<div class="chrow rel"><span class="chico">🚀</span><div class="chmain">${gtag} <b>${esc(c.tag)}</b> ${c.pre ? '<span class="tag warn">pre-release</span>' : '<span class="tag ok">release</span>'} <a href="${esc(c.url)}" target="_blank">${esc(c.msg !== c.tag ? c.msg : 'release page')}</a>
+        ${c.body ? `<details><summary>patch notes</summary><div class="txt notes">${md(c.body.slice(0, 3000))}</div></details>` : ''}</div><span class="dim mono chtime">${time}</span></div>`;
+    } else if (c.kind === 'event') {
+      rows += `<div class="chrow ev"><img class="av" src="${esc(c.avatar)}&s=44" alt=""><div class="chmain">${gtag} ${md(c.msg)} <span class="dim">· ${esc(c.who)}</span></div><span class="dim mono chtime">${time}</span></div>`;
+    } else {
+      const key = c.game + ':' + c.sha, open = CH.open[key];
+      rows += `<div class="chrow commit ${c.merge ? 'merge' : ''}" data-ch="${esc(key)}"><img class="av" src="${esc(c.avatar || '')}&s=44" alt=""><div class="chmain">${gtag} ${c.merge ? '<span class="tag">merge</span> ' : ''}${esc(c.msg)} <span class="dim">· ${esc(c.who)}</span> <a class="mono dim" href="${esc(c.url)}" target="_blank">${esc(c.sha)}</a>
+        ${open ? `<div class="chdetail">${open === 'loading' ? '<span class="dim">loading…</span>' : open.error ? `<span class="tag bad">${esc(open.error)}</span>` : `
+          ${c.body ? `<div class="txt">${md(c.body)}</div>` : ''}
+          <div class="dim" style="font-size:12px;margin:6px 0"><span class="yes">+${open.stats.additions}</span> <span class="pend">−${open.stats.deletions}</span> · ${open.files.length} file${open.files.length === 1 ? '' : 's'}</div>
+          <pre class="files">${open.files.map(f => `${({ added: 'A', removed: 'D', modified: 'M', renamed: 'R' })[f.status] || '·'} ${esc(f.filename)}  +${f.additions} −${f.deletions}`).join('\n')}</pre>`}</div>` : ''}
+        </div><span class="dim mono chtime">${time}</span></div>`;
+    }
+  }
+  p.innerHTML = `<div class="head"><h1>changes</h1><span class="dim">everything that happened across the studio</span><span class="grow"></span><button class="ghost small" id="chRef">refresh</button></div>
+    <div class="head filters">
+      <span class="chips">${[['', 'all games', '#8fd3ff'], ...S.state.games.map(g => [g.id, g.id, g.color])].map(([id, n, col]) => `<span class="tag chip ${CH.game === id ? 'on' : ''}" data-chg="${esc(id)}" style="--c:${esc(col)}">${esc(n)}</span>`).join('')}</span>
+      <select id="chBranch" style="width:auto"><option value="dev" ${CH.branch === 'dev' ? 'selected' : ''}>dev branch</option><option value="main" ${CH.branch === 'main' ? 'selected' : ''}>main branch</option></select>
+      <span class="chips">${[['commit', 'commits'], ['release', 'releases'], ['event', 'team activity']].map(([k, n]) => `<span class="tag chip ${CH.types[k] ? 'on' : ''}" data-cht="${k}">${n}</span>`).join('')}</span>
+      <select id="chWho" style="width:auto"><option value="">anyone</option>${people.map(u => `<option ${CH.who === u ? 'selected' : ''}>${esc(u)}</option>`).join('')}</select>
+      <input id="chQ" placeholder="search…" value="${esc(CH.q)}" style="max-width:180px">
+    </div>
+    ${CH.errors.length ? `<p class="tag bad" style="white-space:normal">${CH.errors.map(esc).join(' · ')}</p>` : ''}
+    <div class="panel chlist">${!CH.loaded ? '<div class="empty">loading…</div>' : rows || '<div class="empty">nothing matches</div>'}
+      ${CH.more ? `<button class="ghost" id="chMore" style="width:100%;margin-top:10px">${CH.loading ? 'loading…' : 'load older commits'}</button>` : ''}</div>`;
+  const focusQ = document.activeElement?.id === 'chQ';
+  $$('[data-chg]', p).forEach(c => c.onclick = () => { CH.game = c.dataset.chg; loadChanges(true); renderChanges(); });
+  $$('[data-cht]', p).forEach(c => c.onclick = () => { CH.types[c.dataset.cht] = !CH.types[c.dataset.cht]; renderChanges(); });
+  $('#chBranch').onchange = e => { CH.branch = e.target.value; loadChanges(true); renderChanges(); };
+  $('#chWho').onchange = e => { CH.who = e.target.value; renderChanges(); };
+  const cq = $('#chQ'); cq.oninput = () => { CH.q = cq.value; renderChanges(); $('#chQ').focus(); };
+  if (focusQ) { cq.focus(); cq.setSelectionRange(cq.value.length, cq.value.length); }
+  $('#chRef').onclick = () => loadChanges(true);
+  if ($('#chMore')) $('#chMore').onclick = () => { CH.page++; loadChanges(false); };
+  $$('[data-ch]', p).forEach(el => el.onclick = async e => {
+    if (e.target.closest('a')) return;
+    const key = el.dataset.ch;
+    if (CH.open[key]) { delete CH.open[key]; return renderChanges(); }
+    CH.open[key] = 'loading'; renderChanges();
+    const [game, sha] = key.split(':');
+    try { CH.open[key] = await api(`/api/changes/${game}/${sha}`); } catch (er) { CH.open[key] = { error: er.message }; }
+    renderChanges();
   });
 }
 

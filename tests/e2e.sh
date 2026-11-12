@@ -129,20 +129,20 @@ c -X POST http://127.0.0.1:7399/api/board -d '{"title":"car handling feels float
 c -X POST http://127.0.0.1:7399/api/board -d '{"title":"shell head models","game":"shells","column":"doing"}' >/dev/null
 c -X POST http://127.0.0.1:7399/api/board -d '{"title":"city bake from OSM","game":"secret","column":"backlog"}' >/dev/null
 c -X POST http://127.0.0.1:7399/api/board -d '{"title":"tank pathing","game":"mars","column":"review","assignee":"arthur"}' >/dev/null
-c -X PATCH http://127.0.0.1:7399/api/board/3 -d '{"column":"done"}' >/dev/null
+c -X PATCH http://127.0.0.1:7399/api/board/4 -d '{"column":"done"}' >/dev/null
 c http://127.0.0.1:7399/api/board | python3 -c '
 import json,sys;b=json.load(sys.stdin);cols={c["number"]:c["column"] for c in b}
-assert len(b)==4 and cols[3]=="done" and cols[2]=="todo" and cols[5]=="review", b
+assert len(b)==4 and cols[4]=="done" and cols[3]=="todo" and cols[6]=="review", b
 print("✓ board: create + move (chat issue hidden)")'
 
 # board v2: priority, tags, due date, checklist, multiple assignees, comments, starter board
-c -X PATCH http://127.0.0.1:7399/api/board/2 -d '{"priority":"p0","tags":["bug","combat"],"due":"2026-12-01","body":"feels like ice\n\n- [x] repro\n- [ ] fix","assignees":["arthur","maya"]}' | python3 -c '
+c -X PATCH http://127.0.0.1:7399/api/board/3 -d '{"priority":"p0","tags":["bug","combat"],"due":"2026-12-01","body":"feels like ice\n\n- [x] repro\n- [ ] fix","assignees":["arthur","maya"]}' | python3 -c '
 import json,sys;c=json.load(sys.stdin)
 assert c["priority"]=="p0" and c["tags"]==["bug","combat"] and c["due"]=="2026-12-01" and (c["checkDone"],c["checkTotal"])==(1,2) and len(c["assignees"])==2 and "hq:due" not in c["body"] and c["column"]=="todo", c
 print("✓ card: priority, tags, due, checklist, assignees")'
-c -X PATCH http://127.0.0.1:7399/api/board/2 -d '{"column":"doing"}' | python3 -c 'import json,sys;c=json.load(sys.stdin);assert c["due"]=="2026-12-01" and c["priority"]=="p0" and c["column"]=="doing",c;print("✓ moving keeps the rest")'
-c -X POST http://127.0.0.1:7399/api/board/2/comments -d '{"text":"on it"}' >/dev/null
-c http://127.0.0.1:7399/api/board/2/comments | grep -q '"on it"' && ok "card comments"
+c -X PATCH http://127.0.0.1:7399/api/board/3 -d '{"column":"doing"}' | python3 -c 'import json,sys;c=json.load(sys.stdin);assert c["due"]=="2026-12-01" and c["priority"]=="p0" and c["column"]=="doing",c;print("✓ moving keeps the rest")'
+c -X POST http://127.0.0.1:7399/api/board/3/comments -d '{"text":"on it"}' >/dev/null
+c http://127.0.0.1:7399/api/board/3/comments | grep -q '"on it"' && ok "card comments"
 c http://127.0.0.1:7399/api/templates | grep -q '"secret"' && ok "secret starter board listed"
 c -X POST http://127.0.0.1:7399/api/board/import -d '{"game":"secret"}' | wait_job | tail -1
 c -X POST http://127.0.0.1:7399/api/board/import -d '{"game":"secret"}' | wait_job | tail -1
@@ -158,9 +158,28 @@ print("✓ starter board imported once (no dupes on re-import)")'
 c -X POST http://127.0.0.1:7399/api/chat -d '{"text":"yo who broke the wrx"}' >/dev/null
 c http://127.0.0.1:7399/api/chat | python3 -c 'import json,sys;m=json.load(sys.stdin);assert any("wrx" in x["text"] for x in m) and any("pushed" in x["text"] for x in m),m;print("✓ chat + push announcements")'
 
+# changes log: commits across games + releases + team activity
+sleep 2
+c "http://127.0.0.1:7399/api/changes" | python3 -c '
+import json,sys;r=json.load(sys.stdin);ch=r["changes"]
+games={c["game"] for c in ch if c["kind"]=="commit"}
+assert games=={"secret","mars","shells","shitbox"},games
+assert any(c["kind"]=="release" and c["tag"]=="0.1.0" for c in ch), "release missing"
+assert any(c.get("merge") for c in ch), [(c["game"],c["msg"],c.get("merge")) for c in ch if c["kind"]=="commit"]
+print("✓ changes: commits from all 4 games + releases + merges")'
+SHA=$(git --git-dir "$R/arthur/secret.git" log dev -1 --format=%h)
+c "http://127.0.0.1:7399/api/changes/secret/$SHA" | python3 -c 'import json,sys;d=json.load(sys.stdin);assert d["files"] and "stats" in d,d;print("✓ commit detail: files + stats")'
+c "http://127.0.0.1:7399/api/changes?game=secret&branch=main" | python3 -c 'import json,sys;r=json.load(sys.stdin)["changes"];assert r and all(c["game"]=="secret" for c in r);print("✓ changes filter by game/branch")'
+c http://127.0.0.1:7399/api/log | python3 -c '
+import json,sys;l=json.load(sys.stdin);t=" | ".join(e["msg"] for e in l)
+for want in ["new card #","moved #","merged **SECRET** dev → main","published **SECRET** 0.1.0","pushed","starter board"]:
+    assert want in t, (want, t)
+print("✓ activity log: cards, moves, invites, merges, publishes, pushes, imports")'
+
 # team
 c -X POST http://127.0.0.1:7399/api/team/add -d '{"user":"maya","repos":["secret","shells","studio"]}' | wait_job >/dev/null && ok "invited maya"
 c http://127.0.0.1:7399/api/team | python3 -c 'import json,sys;t=json.load(sys.stdin);m={x["login"]:x for x in t["members"]};assert m["maya"]["pending"]["secret"],t;print("✓ team shows pending invite")'
+sleep 1; c http://127.0.0.1:7399/api/log | grep -q "invited @maya" && ok "invite in the activity log"
 c -X POST http://127.0.0.1:7399/api/team/package -d '{"user":"maya"}' | python3 -c 'import json,sys;print(json.load(sys.stdin)["path"])' > "$T/pkg"
 unzip -l "$(cat "$T/pkg")" | grep -q team.json && unzip -p "$(cat "$T/pkg")" '*/team.json' | grep -q fishmarket-hq && ok "invite package has hq + team.json"
 c -o /dev/null "http://127.0.0.1:7399/package/$(basename "$(cat "$T/pkg")")" && ok "package downloads"

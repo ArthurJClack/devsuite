@@ -110,6 +110,7 @@ func (s *Server) startSync(g Game, op, msg string) (*Job, error) {
 			s.syncs.mu.Unlock()
 		}
 		if err == nil && op == "push" && len(commits) > 0 {
+			s.logEvent("push", g.ID, fmt.Sprintf("⬆️ pushed %s to **%s** dev", plural(len(commits), "commit"), g.Name))
 			note := msg
 			if strings.TrimSpace(note) == "" {
 				note = strings.SplitN(commits[0], " ", 2)[len(strings.SplitN(commits[0], " ", 2))-1]

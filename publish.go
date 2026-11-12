@@ -82,7 +82,11 @@ func (s *Server) startPublish(g Game, kind string) (*Job, error) {
 		}
 		if err != nil {
 			set("failed", firstLine(err.Error()))
+			s.logEvent("publish", g.ID, fmt.Sprintf("❌ %s of **%s** failed: %s", label, g.Name, firstLine(err.Error())))
 			return err
+		}
+		if kind != "test" {
+			s.logEvent("publish", g.ID, strings.Join(strings.Fields(fmt.Sprintf("🚀 published **%s** %s (%s)", g.Name, tag, kind)), " "))
 		}
 		switch {
 		case kind == "test":

@@ -58,6 +58,7 @@ type Team struct {
 	Studio    string `json:"studio"`
 	Repo      string `json:"repo,omitempty"` // studio repo: board + chat live in its issues
 	ChatIssue int    `json:"chatIssue,omitempty"`
+	LogIssue  int    `json:"logIssue,omitempty"`
 	Games     []Game `json:"games"`
 }
 

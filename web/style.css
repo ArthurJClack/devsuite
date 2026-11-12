@@ -191,3 +191,17 @@ td.ck { text-align: center; } th.ck { text-align: center; }
 @keyframes spin { to { transform: rotate(360deg); } }
 .pubrow { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: 10px; padding-top: 10px; border-top: 1px dashed var(--line); font-size: 13px; }
 .pubrow a { cursor: pointer; }
+
+/* changes */
+.chlist { padding: 6px 14px 14px; }
+.chday { font-family: silk; font-size: 11px; color: var(--dim); margin: 16px 0 4px; text-transform: lowercase; }
+.chrow { display: grid; grid-template-columns: 22px 1fr auto; gap: 10px; align-items: start; padding: 7px 0; border-bottom: 1px solid var(--line); font-size: 13.5px; }
+.chrow.commit { cursor: pointer; } .chrow.commit:hover { background: #ffffff05; }
+.chrow.merge .chmain { color: var(--dim); }
+.chrow.rel { background: linear-gradient(90deg, #59d49912, transparent 60%); }
+.chrow.ev .chmain { color: #c9d6e2; }
+.chico { text-align: center; }
+.chmain { min-width: 0; word-break: break-word; }
+.chtime { font-size: 11.5px; padding-top: 2px; }
+.chdetail { margin-top: 8px; cursor: default; }
+.notes { margin-top: 6px; font-size: 13px; max-height: 260px; overflow: auto; }
