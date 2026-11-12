@@ -179,3 +179,15 @@ td.ck { text-align: center; } th.ck { text-align: center; }
 #modal .box { width: min(640px, 94vw); }
 #modal .box .row { flex-wrap: wrap; }
 #modal .box .row > div { min-width: 120px; }
+
+/* sync status */
+.syncline { display: flex; flex-wrap: wrap; gap: 5px; align-items: center; margin-top: 8px; }
+.syncline .tag { white-space: normal; }
+.hist { font-size: 12.5px; display: flex; flex-direction: column; gap: 3px; margin-top: 6px; }
+.hist a, .sarow a { cursor: pointer; font-size: 12px; }
+.sarow { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--line); }
+.sarow pre { flex-basis: 100%; margin: 0; }
+.spin { display: inline-block; animation: spin 1s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.pubrow { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: 10px; padding-top: 10px; border-top: 1px dashed var(--line); font-size: 13px; }
+.pubrow a { cursor: pointer; }

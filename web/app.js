@@ -88,6 +88,28 @@ function prompt2(title, label, placeholder = '', multiline = false) {
 const S = { state: null, remote: [], activity: [], board: { cards: [], loaded: false, loading: false, error: '', at: 0, view: localStorage.getItem('hqBoard') || 'all', q: '', mine: false, prio: '', tag: '', allDone: false }, templates: {}, chat: [], chatLoaded: false, team: null, page: 'dash', seenChat: +localStorage.getItem('hqSeen') || 0 };
 const gameById = id => (S.state?.games || []).find(g => g.id === id);
 const gColor = id => gameById(id)?.color || '#8fd3ff';
+const syncOf = id => S.state?.sync?.[id] || { history: [] };
+const SYNC_ICON = { running: '⟳', ok: '✓', nothing: '·', failed: '✗' };
+const SYNC_CLS = { running: 'warn', ok: 'ok', nothing: '', failed: 'bad' };
+const OP_LABEL = { pull: 'update', push: 'push', update: '🚀 publish', hotfix: '🚀 hotfix', test: 'test build' };
+function syncLine(g, full) {
+  const y = syncOf(g.id), last = y.history[0], l = g.local;
+  const parts = [];
+  if (l.cloned && l.behind) parts.push(`<span class="tag warn" title="on github, not on your computer yet">↓ ${l.behind} new on dev</span>`);
+  if (l.cloned && l.ahead) parts.push(`<span class="tag" title="your commits not on github yet">↑ ${l.ahead} to push</span>`);
+  if (l.cloned && l.dirty) parts.push(`<span class="tag warn">${l.dirty} unsaved</span>`);
+  if (last) parts.push(`<span class="tag ${SYNC_CLS[last.state]}" title="${esc(last.summary)}">${last.state === 'running' ? '<span class="spin">⟳</span>' : SYNC_ICON[last.state]} ${OP_LABEL[last.op] || last.op}: ${esc(last.summary)} · ${ago(last.at)}</span>`);
+  else if (l.cloned && !l.behind && !l.ahead && !l.dirty && l.hasDev) parts.push('<span class="tag ok">✓ up to date</span>');
+  if (full && y.fetched && !String(y.fetched).startsWith('0001')) parts.push(`<span class="dim" style="font-size:11px">checked github ${ago(y.fetched)}</span>`);
+  return parts.length ? `<div class="syncline">${parts.join('')}</div>` : '';
+}
+function syncHistory(g) {
+  const h = syncOf(g.id).history;
+  if (!h.length) return '';
+  const last = h[0];
+  return `${last.commits?.length && (last.op === 'pull' || last.op === 'push') ? `<details open><summary>${last.op === 'pull' ? 'what you got' : 'what you pushed'} (${last.commits.length})</summary><pre class="files">${esc(last.commits.join('\n'))}</pre></details>` : ''}
+    ${h.length > 1 ? `<details><summary>sync history</summary><div class="hist">${h.map(x => `<div><span class="${SYNC_CLS[x.state] === 'bad' ? 'pend' : 'dim'}">${SYNC_ICON[x.state]}</span> ${OP_LABEL[x.op] || x.op} · ${esc(x.summary)} <span class="dim">${ago(x.at)}</span>${x.job ? ` <a data-log="${esc(x.job)}">log</a>` : ''}</div>`).join('')}</div></details>` : ''}`;
+}
 const studioReady = () => S.state?.studioRepo && S.state?.chatIssue;
 
 async function loadState() {
@@ -133,9 +155,10 @@ async function runJob(promise, onDone) {
   $('#conState').textContent = 'running…';
   $('#jobDot').className = 'run';
   log.textContent = '';
-  let at = 0;
+  let at = 0, ticks = 0;
   clearInterval(jobPoll);
   jobPoll = setInterval(async () => {
+    if (++ticks % 8 === 0 && !busy()) refresh(); // keep the card's status line moving too
     let r;
     try { r = await api(`/api/job/${job.id}?from=${at}`); } catch (e) { return; }
     if (r.log) {
@@ -203,7 +226,7 @@ function renderDash() {
   const p = $('#page-dash');
   const me = S.state.me?.login;
   const mine = sortCards(S.board.cards.filter(c => c.column !== 'done' && c.assignees.some(a => a.login === me)));
-  p.innerHTML = `<div class="head"><h1>dashboard</h1><span class="grow"></span><button class="ghost small" id="dRef">refresh</button></div>
+  p.innerHTML = `<div class="head"><h1>dashboard</h1><span class="grow"></span><button class="ice small" data-all="pull">⟳ update all games</button><button class="small" data-all="push">↑ push all</button><button class="ghost small" id="dRef">refresh</button></div>
     <div class="grid cols-4">${S.state.games.map(gameTile).join('')}</div>
     <div class="dash">
       <div class="grid" style="align-content:start">
@@ -216,6 +239,7 @@ function renderDash() {
       <div class="panel"><h2>chat <a class="small" data-go="chat">open →</a></h2>${chatHTML(true)}</div>
     </div>`;
   $('#dRef').onclick = () => refresh(true);
+  bindSyncAll(p);
   $$('[data-go]', p).forEach(a => a.onclick = () => show(a.dataset.go));
   bindCards(p); bindChat(p); bindTiles(p);
 }
@@ -230,10 +254,11 @@ function gameTile(g) {
     <div class="stat"><span>downloads</span><b>${r.downloads ?? '—'}</b></div>
     <div class="stat"><span>dev not on main</span><b>${r.devAhead ?? '—'}</b></div>
     <div class="stat"><span>open PRs</span><b>${r.prs ?? '—'}</b></div>
-    <div class="stat"><span>you</span><b>${l.cloned ? `${esc(l.branch)}${l.dirty ? ` <span class="tag warn">${l.dirty} changed</span>` : ''}${l.behind ? ` <span class="tag">↓${l.behind}</span>` : ''}${l.ahead ? ` <span class="tag">↑${l.ahead}</span>` : ''}` : '<span class="dim">not downloaded</span>'}</b></div>
+    <div class="stat"><span>you</span><b>${l.cloned ? esc(l.branch) : '<span class="dim">not downloaded</span>'}</b></div>
+    ${syncLine(g)}
     ${r.last ? `<p class="dim" style="font-size:12px;margin:8px 0 0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(r.last.who)}: ${esc(r.last.msg)} · ${ago(r.last.at)}</p>` : ''}
     ${r.error ? `<p class="tag bad" style="margin-top:8px;white-space:normal">${esc(r.error)}</p>` : ''}
-    <div class="btns">${l.cloned ? `<button class="small" data-op="pull">pull dev</button><button class="small pri" data-op="push">push dev</button><button class="small" data-op="editor">open</button><button class="small ice" data-op="playdev">▶ dev</button>`
+    <div class="btns">${l.cloned ? `<button class="small ${l.behind ? 'ice' : ''}" data-op="pull">⟳ update</button><button class="small pri" data-op="push">↑ push</button><button class="small" data-op="editor">open</button><button class="small ice" data-op="playdev">▶ dev</button>`
       : `<button class="small ice" data-op="clone">download</button><button class="small" data-op="playdev">▶ dev</button>`}</div></div>`;
 }
 
@@ -253,41 +278,105 @@ async function gameOp(id, op, path) {
     if (!await confirmBox(`ship ${g.name} dev → main?`, `merges ${r?.devAhead ?? 'all'} commit(s) from dev into main on github. main is what release builds come from.`, 'merge to main')) return;
   }
   if (op === 'publish' || op === 'hotfix') {
-    if (!await confirmBox(`${op} ${g.name}?`, `runs <code>${esc(op === 'publish' ? g.publish : g.hotfix)}</code> in its own window. players get it.`, op)) return;
+    const what = op === 'publish' ? (g.release ? 'an update from main, after merging dev' : 'an update') : 'a hotfix (main, the live game + fixes)';
+    const r = S.remote.find(x => x.id === id);
+    if (!await confirmBox(`publish ${g.name}?`, `ships ${what} to every player. ${r?.release ? `current version: <b>${esc(r.release.tag_name)}</b>. ` : ''}${g.release ? 'github builds, tests and releases it; you can watch every step here.' : `runs <code>${esc(op === 'publish' ? g.publish : g.hotfix)}</code>.`}`, op === 'publish' ? '🚀 publish' : 'publish hotfix')) return;
   }
-  const jobs = ['clone', 'pull', 'push', 'tomain', 'playdev'];
+  const jobs = ['clone', 'pull', 'push', 'tomain', 'playdev', 'publish', 'hotfix', 'test'];
   if (jobs.includes(op)) return runJob(api(`/api/game/${id}/${op}`, { body: {} }));
   try { await api(`/api/game/${id}/${op}`, { body: { path } }); toast(op === 'tool' ? `started ${path}` : 'opened'); } catch (e) { fail(e); }
+}
+
+function publishRow(g) {
+  const k = g.publishKinds || [];
+  if (!k.length) return `<div class="pubrow dim">publishing isn't set up for this game. add a release workflow or script in <a data-editgames>edit games list</a></div>`;
+  const how = g.release ? `runs <span class="mono">${esc(g.release.workflow)}</span> on github` : `runs <span class="mono">${esc(g.publish)}</span>`;
+  return `<div class="pubrow"><span class="dim">publish</span>
+    ${k.includes('update') ? '<button class="small pri" data-op="publish">🚀 update</button>' : ''}
+    ${k.includes('hotfix') ? '<button class="small" data-op="hotfix">hotfix</button>' : ''}
+    ${k.includes('test') ? '<button class="small ghost" data-op="test">test build</button>' : ''}
+    <span class="dim" style="font-size:11.5px">${how}</span></div>`;
+}
+
+// ---------- update all / push all, with live status per game
+function bindSyncAll(root) {
+  $$('[data-all]', root).forEach(b => b.onclick = () => syncAll(b.dataset.all));
+}
+async function syncAll(op) {
+  let message = '';
+  if (op === 'push') {
+    message = await prompt2('push all games', 'what did you change? (one message for every game you changed)', 'today\'s work');
+    if (message === null) return;
+  }
+  let rows;
+  try { rows = await api('/api/sync-all', { body: { op, message } }); } catch (e) { return fail(e); }
+  const title = op === 'pull' ? 'updating every game' : 'pushing every game';
+  const draw = box => {
+    let running = 0;
+    $('#saRows', box).innerHTML = rows.map(r => {
+      const g = gameById(r.game);
+      if (r.skip) return `<div class="sarow"><b style="color:${esc(g?.color)}">${esc(r.name)}</b><span class="dim">· skipped: ${esc(r.skip)}</span></div>`;
+      const h = syncOf(r.game).history.find(x => x.job === r.job);
+      const st = h ? h.state : 'running';
+      if (st === 'running') running++;
+      return `<div class="sarow"><b style="color:${esc(g?.color)}">${esc(r.name)}</b><span class="tag ${SYNC_CLS[st]}">${st === 'running' ? '<span class="spin">⟳</span>' : SYNC_ICON[st]} ${esc(h?.summary || 'starting…')}</span><a data-log="${esc(r.job)}">log</a>
+        ${h?.commits?.length ? `<pre class="files">${esc(h.commits.slice(0, 8).join('\n'))}${h.commits.length > 8 ? '\n…' : ''}</pre>` : ''}</div>`;
+    }).join('');
+    $$('[data-log]', box).forEach(a => a.onclick = () => showJob(a.dataset.log));
+    $('#saState', box).textContent = running ? `${running} still going…` : 'all done';
+    return running;
+  };
+  modal(`<h1>${title}</h1><p class="dim" id="saState"></p><div id="saRows"></div><div class="btns"><button data-close>close</button></div>`, async box => {
+    draw(box);
+    for (let i = 0; i < 600; i++) {
+      await new Promise(r => setTimeout(r, 1000));
+      try { S.state = await api('/api/state'); } catch (e) { continue; }
+      if (!document.body.contains(box) || $('#modal').classList.contains('hidden')) break;
+      if (!draw(box)) break;
+    }
+    render();
+  });
+}
+async function showJob(id) {
+  $('#console').classList.remove('hidden');
+  try { const r = await api(`/api/job/${id}`); $('#conTitle').textContent = r.title; $('#conState').textContent = r.done ? (r.ok ? 'done' : 'failed') : 'running…'; $('#conLog').textContent = r.log; $('#conLog').scrollTop = 1e9; } catch (e) { fail(e); }
 }
 
 // ---------- games
 function renderGames() {
   const p = $('#page-games');
-  p.innerHTML = `<div class="head"><h1>games</h1><span class="dim mono">${esc(S.state.workspace)}</span><span class="grow"></span><button class="small" id="gEdit">edit games list</button></div>
+  p.innerHTML = `<div class="head"><h1>games</h1><span class="dim mono">${esc(S.state.workspace)}</span><span class="grow"></span><button class="ice small" data-all="pull">⟳ update all</button><button class="small" data-all="push">↑ push all</button><button class="ghost small" id="gFetch">check github</button><button class="small" id="gEdit">edit games list</button></div>
     <div class="grid cols-2">${S.state.games.map(g => {
       const l = g.local;
       return `<div class="panel gcard" style="--c:${esc(g.color || '#8fd3ff')}" data-game="${esc(g.id)}">
         <div class="title"><h3>${esc(g.name)}</h3><span class="tag c">${esc(g.genre)}</span><span class="dim mono" style="font-size:12px">${esc(g.repo)}</span></div>
         ${l.cloned ? `
           <div class="stat"><span>branch</span><b>${esc(l.branch)} @ ${esc(l.commit)}</b></div>
-          <div class="stat"><span>vs dev</span><b>${!l.hasDev ? '<span class="dim">no dev branch yet</span>' : (l.behind || l.ahead) ? `${l.behind} behind · ${l.ahead} ahead` : 'up to date'}</b></div>
+          <div class="stat"><span>vs dev</span><b>${!l.hasDev ? '<span class="dim">no dev branch yet</span>' : (l.behind || l.ahead) ? `${l.behind} new on dev · ${l.ahead} yours to push` : 'up to date'}</b></div>
           <div class="stat"><span>unsaved changes</span><b>${l.dirty || 'none'}</b></div>
-          ${l.files?.length ? `<pre class="files">${esc(l.files.join('\n'))}</pre>` : ''}
+          ${syncLine(g, true)}
+          ${l.files?.length ? `<details><summary>changed files (${l.dirty})</summary><pre class="files">${esc(l.files.join('\n'))}</pre></details>` : ''}
           <div class="btns">
-            <button class="ice" data-op="pull">↓ pull dev</button><button class="pri" data-op="push">↑ push to dev</button><button data-op="tomain">dev → main</button>
+            <button class="${l.behind ? 'ice' : ''}" data-op="pull">⟳ update (pull dev)</button><button class="pri" data-op="push">↑ push to dev</button><button data-op="tomain">dev → main</button>
           </div>
+          ${syncHistory(g)}
           <div class="btns">
             <button class="small" data-op="editor">godot editor</button><button class="small" data-op="play" title="runs your copy, with your changes">play mine</button><button class="small ice" data-op="playdev" title="runs the latest dev from github in a separate copy, doesn't touch yours">▶ play dev</button><button class="small" data-op="folder">folder</button>
             <button class="small ghost" data-op="github">github</button><button class="small ghost" data-op="releases">releases</button>
-            ${g.publish ? '<button class="small" data-op="publish">publish update</button>' : ''}${g.hotfix ? '<button class="small" data-op="hotfix">hotfix</button>' : ''}
           </div>
+          ${publishRow(g)}
           ${l.tools?.length ? `<details><summary>tools (${l.tools.length})</summary><div class="tools">${l.tools.map(t => `<button data-op="tool" data-path="${esc(t.path)}" title="${esc(t.path)}">${esc(t.name)}</button>`).join('')}</div></details>` : ''}`
         : `<p class="dim">not on this computer yet. downloads the source into <span class="mono">${esc(l.path)}</span>${g.dev !== '' ? ', on the dev branch' : ''}.</p>
+           ${g.release ? publishRow(g) + syncLine(g) : ''}
            <div class="btns"><button class="ice" data-op="clone">download source</button><button data-op="playdev">▶ play dev</button><button class="ghost small" data-op="github">github</button><button class="ghost small" data-op="releases">releases</button></div>`}
       </div>`;
     }).join('')}</div>`;
   bindTiles(p);
+  bindSyncAll(p);
   $('#gEdit').onclick = editGames;
+  $('#gFetch').onclick = async () => { toast('checking github…'); try { await api('/api/fetch', { body: {} }); await refresh(); toast('checked'); } catch (e) { fail(e); } };
+  $$('[data-log]', p).forEach(a => a.onclick = () => showJob(a.dataset.log));
+  $$('[data-editgames]', p).forEach(a => a.onclick = editGames);
 }
 
 function editGames() {

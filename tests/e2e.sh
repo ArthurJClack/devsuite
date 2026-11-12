@@ -23,8 +23,8 @@ cat > "$HQ_HOME/config.json" <<EOF
 {"workspace":"$T/ws","team":$(python3 -c "
 import json,subprocess
 t={'studio':'fish market studios','games':[
- {'id':'secret','name':'SECRET','genre':'rpg','repo':'arthur/secret','releases':'arthur/secret-releases','color':'#c77dff','publish':'tools/build_thing.sh'},
- {'id':'mars','name':'FOR/AGAINST','genre':'rts','repo':'arthur/marsprivate','releases':'arthur/mars','color':'#ff6b35'},
+ {'id':'secret','name':'SECRET','genre':'rpg','repo':'arthur/secret','releases':'arthur/secret-releases','color':'#c77dff','release':{'workflow':'release.yml','ref':'main','update':{'kind':'update','dry_run':'false'},'hotfix':{'kind':'hotfix','dry_run':'false'},'test':{'kind':'update','dry_run':'true'}}},
+ {'id':'mars','name':'FOR/AGAINST','genre':'rts','repo':'arthur/marsprivate','releases':'arthur/mars','color':'#ff6b35','publish':'tools/build_thing.sh --yes'},
  {'id':'shells','name':'SHELLS','genre':'fps','repo':'arthur/shells','releases':'arthur/shells-release','color':'#4cc9f0'},
  {'id':'shitbox','name':'SHITBOX RALLY','genre':'racing','repo':'arthur/shitbox-rally','releases':'arthur/shitboxrally-releases','color':'#ffd166'}]}
 print(json.dumps(t))")}
@@ -37,7 +37,7 @@ trap 'kill $FAKE $HQ 2>/dev/null || true' EXIT
 sleep 1
 K=$(cat "$HQ_HOME/key")
 c() { curl -sf -H "X-HQ-Key: $K" -H 'Content-Type: application/json' "$@"; }
-wait_job() { local id; id=$(python3 -c 'import json,sys;print(json.load(sys.stdin)["id"])'); for _ in $(seq 100); do
+wait_job() { local id; id=$(python3 -c 'import json,sys;print(json.load(sys.stdin)["id"])'); for _ in $(seq 400); do
   r=$(c "http://127.0.0.1:7399/api/job/$id"); if python3 -c 'import json,sys;d=json.loads(sys.argv[1]);sys.exit(0 if d["done"] else 1)' "$r"; then
   python3 -c 'import json,sys;d=json.loads(sys.argv[1]);print(d["log"]);sys.exit(0 if d["ok"] else 1)' "$r"; return; fi; sleep 0.2; done; echo TIMEOUT; return 1; }
 ok() { echo "✓ $*"; }
@@ -65,6 +65,41 @@ git --git-dir "$R/arthur/secret.git" log dev -1 --format=%s | grep -q "added a l
 # a teammate pushes to dev; we pull
 w2=$T/mate; G clone -q -b dev "$R/arthur/secret.git" "$w2"; echo hi > "$w2/mate.txt"; G -C "$w2" add -A; G -C "$w2" commit -qm "mate work"; G -C "$w2" push -q origin dev
 c -X POST http://127.0.0.1:7399/api/game/secret/pull -d '{}' | wait_job >/dev/null && [ -f "$T/ws/secret/mate.txt" ] && ok "pull dev got teammate's work"
+
+# sync status: the pull above recorded what came in
+c http://127.0.0.1:7399/api/state | python3 -c '
+import json,sys;d=json.load(sys.stdin);h=d["sync"]["secret"]["history"]
+assert h[0]["op"]=="pull" and h[0]["state"]=="ok" and any("mate work" in x for x in h[0]["commits"]), h
+assert h[1]["op"]=="push" and h[1]["state"]=="ok" and any("added a level" in x for x in h[1]["commits"]), h
+print("✓ sync status: pull + push recorded with their commits")'
+# background fetch sees new dev work without touching files
+w3=$T/mate3; G clone -q -b dev "$R/arthur/shitbox-rally.git" "$w3"; echo r > "$w3/road.txt"; G -C "$w3" add -A; G -C "$w3" commit -qm "new road"; G -C "$w3" push -q origin dev
+c -X POST http://127.0.0.1:7399/api/fetch -d '{}' >/dev/null
+c http://127.0.0.1:7399/api/state | python3 -c 'import json,sys;g={x["id"]:x for x in json.load(sys.stdin)["games"]};assert g["shitbox"]["local"]["behind"]==1,g["shitbox"]["local"];print("✓ check github: 1 new on dev")'
+[ ! -f "$T/ws/shitbox/road.txt" ] && ok "fetch didn't touch files"
+# update all
+c -X POST http://127.0.0.1:7399/api/sync-all -d '{"op":"pull"}' > "$T/sa.json"
+python3 -c 'import json;r=json.load(open("'"$T"'/sa.json"));assert len([x for x in r if x.get("job")])==4,r' && sleep 3
+c http://127.0.0.1:7399/api/state | python3 -c '
+import json,sys;d=json.load(sys.stdin);y=d["sync"]
+assert y["shitbox"]["history"][0]["summary"]=="got 1 new commit", y["shitbox"]
+assert y["secret"]["history"][0]["state"]=="nothing", y["secret"]
+print("✓ update all: per-game status (got 1 / up to date)")'
+[ -f "$T/ws/shitbox/road.txt" ] && ok "update all pulled the new road"
+# push all skips games with nothing to send
+echo t > "$T/ws/shitbox/tweak.txt"
+c -X POST http://127.0.0.1:7399/api/sync-all -d '{"op":"push","message":"tweaks"}' | python3 -c '
+import json,sys;r={x["game"]:x for x in json.load(sys.stdin)};assert r["shitbox"].get("job") and r["secret"].get("skip")=="no changes",r;print("✓ push all: only games with changes")'
+sleep 3
+git --git-dir "$R/arthur/shitbox-rally.git" log dev -1 --format=%s | grep -q tweaks && ok "push all landed on dev"
+
+# publish: secret via its github release workflow, mars via a local script
+c -X POST http://127.0.0.1:7399/api/game/secret/publish -d '{}' | wait_job > "$T/pub.log" && grep -q "released 0.1.0" "$T/pub.log" && grep -q "step 2/4: tests" "$T/pub.log" && ok "publish (workflow): started, watched step by step, released 0.1.0"
+c http://127.0.0.1:7399/api/state | python3 -c 'import json,sys;h=json.load(sys.stdin)["sync"]["secret"]["history"][0];assert h["op"]=="update" and h["summary"]=="published 0.1.0",h;print("✓ publish status recorded")'
+c http://127.0.0.1:7399/api/chat | grep -q "0.1.0 is out" && ok "publish announced in chat"
+c -X POST http://127.0.0.1:7399/api/game/secret/test -d '{}' | wait_job >/dev/null && c http://127.0.0.1:7399/api/state | grep -q "dry run passed" && ok "test build (dry run)"
+c -X POST http://127.0.0.1:7399/api/game/mars/publish -d '{}' | wait_job | grep -q "^build" && ok "publish (script): ran with live output"
+curl -s -H "X-HQ-Key: $K" -X POST http://127.0.0.1:7399/api/game/shells/publish -d "{}" | grep -q "no update publishing" && ok "games without publishing say so"
 
 # play dev: separate copy of latest dev, launched in godot, your checkout untouched
 echo "wip" > "$T/ws/secret/wip.txt"

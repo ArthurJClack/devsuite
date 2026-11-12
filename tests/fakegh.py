@@ -11,7 +11,7 @@ from urllib.parse import urlparse, parse_qs
 ROOT, PORT = sys.argv[1], int(sys.argv[2])
 ME = {"login": "arthur", "avatar_url": "https://avatars.githubusercontent.com/u/1?v=4"}
 now = lambda: time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
-issues, comments, labels, files, collabs, invites, releases = {}, {}, {}, {}, {}, {}, {}
+issues, comments, labels, files, collabs, invites, releases, runs = {}, {}, {}, {}, {}, {}, {}, {}
 next_id = [1000]
 
 
@@ -153,6 +153,35 @@ class H(BaseHTTPRequestHandler):
             return self.send(200, [{"id": i, "invitee": user(w)} for i, w in enumerate(sorted(invites.get(repo, set())))])
         if rest == "/releases":
             return self.send(200, releases.get(repo, []))
+        mw = re.match(r"^/actions/workflows/([^/]+)/(dispatches|runs)$", rest)
+        if mw:
+            rs = runs.setdefault(repo, [])
+            if mw.group(2) == "dispatches" and m == "POST":
+                next_id[0] += 1
+                rs.insert(0, {"id": next_id[0], "status": "in_progress", "conclusion": None, "polls": 0, "inputs": b.get("inputs", {}),
+                              "html_url": f"https://github.com/{repo}/actions/runs/{next_id[0]}", "created_at": now()})
+                return self.send(204)
+            return self.send(200, {"workflow_runs": [{k: v for k, v in r.items() if k != "polls"} for r in rs]})
+        mr = re.match(r"^/actions/runs/(\d+)(/jobs)?$", rest)
+        if mr:
+            r = next((x for x in runs.get(repo, []) if x["id"] == int(mr.group(1))), None)
+            if not r:
+                return self.send(404, {"message": "Not Found"})
+            if mr.group(2):
+                step = min(r["polls"], 3)
+                return self.send(200, {"jobs": [{"name": "release", "status": r["status"], "steps": [
+                    {"name": n, "number": i + 1, "status": "completed" if i < step else ("in_progress" if i == step else "queued"), "conclusion": None}
+                    for i, n in enumerate(["checkout", "tests", "build windows", "publish"])]}]})
+            r["polls"] += 1
+            if r["polls"] >= 3 and r["status"] != "completed":
+                r["status"], r["conclusion"] = "completed", "success"
+                if r["inputs"].get("dry_run") != "true":
+                    rel = repo + "-releases" if not repo.endswith("-releases") else repo
+                    for cand in (repo.replace("/secret", "/secret-releases"),):
+                        rel = cand
+                    n = len(releases.get(rel, [])) + 1
+                    releases.setdefault(rel, []).insert(0, {"tag_name": f"0.{n}.0", "name": "", "prerelease": False, "html_url": "x", "published_at": now(), "assets": []})
+            return self.send(200, {k: v for k, v in r.items() if k != "polls"})
         if rest == "/pulls":
             return self.send(200, [])
         mcmp = re.match(r"^/compare/([^.]+)\.\.\.(.+)$", rest)

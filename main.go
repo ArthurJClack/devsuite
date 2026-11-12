@@ -88,6 +88,7 @@ func main() {
 	s := &Server{store: st, jobs: newJobs(), key: key}
 	s.gh = newGH(s.token)
 	s.upd = &Updater{gh: s.gh}
+	s.syncs = newSyncs()
 	if st.Get().Token == "" {
 		s.cliToken = ghCLIToken()
 	}
@@ -104,6 +105,7 @@ func main() {
 		}
 		os.Exit(0)
 	}
+	go s.fetchLoop()
 	go s.upd.loop(func() bool { return !s.store.Get().NoAutoUpdate }, func() bool { return s.jobs.Running() == 0 }, s.restart)
 	if err := srv.Serve(ln); err != nil && err != http.ErrServerClosed {
 		fmt.Fprintln(os.Stderr, err)

@@ -81,13 +81,34 @@ func (s *Server) team() Team {
 		s.teamAt = time.Now()
 		if t, _, err := s.fetchTeam(l.Studio); err == nil {
 			_ = s.store.Update(func(x *Local) { x.Team = t })
-			return *t
+			return withDefaults(*t)
 		}
 	}
 	if l.Team != nil && len(l.Team.Games) > 0 {
-		return *l.Team
+		return withDefaults(*l.Team)
 	}
 	return defaultTeam()
+}
+
+// withDefaults fills publish settings a saved games list doesn't have yet from the built-in
+// defaults (same game id), so studios set up with an older hq get new features.
+func withDefaults(t Team) Team {
+	def := map[string]Game{}
+	for _, g := range defaultTeam().Games {
+		def[g.ID] = g
+	}
+	games := make([]Game, len(t.Games))
+	for i, g := range t.Games {
+		if d, ok := def[g.ID]; ok && g.Release == nil && d.Release != nil && (g.Publish == "" || g.Publish == "tools/PUBLISH_UPDATE.bat") {
+			g.Release, g.Publish, g.Hotfix = d.Release, "", ""
+		}
+		if d, ok := def[g.ID]; ok && g.Publish == "tools/publish_update.bat" && d.Publish != "" {
+			g.Publish, g.Hotfix = d.Publish, d.Hotfix
+		}
+		games[i] = g
+	}
+	t.Games = games
+	return t
 }
 
 func (s *Server) setTeam(t *Team) {

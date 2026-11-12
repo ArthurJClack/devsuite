@@ -25,6 +25,7 @@ type Server struct {
 	teamAt time.Time
 
 	upd     *Updater
+	syncs   *Syncs
 	restart func(exe string)
 
 	meMu  sync.Mutex
@@ -141,6 +142,20 @@ func (s *Server) routes() http.Handler {
 		return ok(), nil
 	})
 	h("GET /api/remote", s.apiRemote)
+	h("POST /api/sync-all", func(w http.ResponseWriter, r *http.Request) (any, error) {
+		var in struct{ Op, Message string }
+		if err := readJSON(r, &in); err != nil {
+			return nil, err
+		}
+		if in.Op != "pull" && in.Op != "push" {
+			return nil, fmt.Errorf("op is pull or push")
+		}
+		return s.syncAll(in.Op, in.Message), nil
+	})
+	h("POST /api/fetch", func(w http.ResponseWriter, r *http.Request) (any, error) {
+		s.fetchAll()
+		return ok(), nil
+	})
 	h("GET /api/activity", s.apiActivity)
 	h("GET /api/board", func(w http.ResponseWriter, r *http.Request) (any, error) { return s.board() })
 	h("POST /api/board", func(w http.ResponseWriter, r *http.Request) (any, error) {
@@ -267,7 +282,7 @@ func (s *Server) apiState(w http.ResponseWriter, r *http.Request) (any, error) {
 	out := map[string]any{
 		"studio": t.Studio, "studioRepo": l.Studio, "chatIssue": t.ChatIssue, "workspace": l.Workspace,
 		"godot": findGodot(l.Godot), "godotSaved": l.Godot, "signedIn": false, "columns": columns,
-		"gitOK": hasGit(), "version": version, "update": s.upd.Info(), "autoUpdate": !l.NoAutoUpdate, "tokenFrom": map[bool]string{true: "pasted", false: "github cli"}[l.Token != ""],
+		"gitOK": hasGit(), "version": version, "update": s.upd.Info(), "sync": s.syncs.Snapshot(), "autoUpdate": !l.NoAutoUpdate, "tokenFrom": map[bool]string{true: "pasted", false: "github cli"}[l.Token != ""],
 	}
 	if u, err := s.me(); err == nil {
 		out["signedIn"], out["me"] = true, u
@@ -277,6 +292,7 @@ func (s *Server) apiState(w http.ResponseWriter, r *http.Request) (any, error) {
 	type gs struct {
 		Game
 		Local LocalStatus `json:"local"`
+		Kinds []string    `json:"publishKinds"`
 	}
 	games := make([]gs, len(t.Games))
 	var wg sync.WaitGroup
@@ -284,7 +300,7 @@ func (s *Server) apiState(w http.ResponseWriter, r *http.Request) (any, error) {
 		wg.Add(1)
 		go func(i int, g Game) {
 			defer wg.Done()
-			games[i] = gs{g, localStatus(l.Workspace, g)}
+			games[i] = gs{g, localStatus(l.Workspace, g), publishKinds(g)}
 		}(i, g)
 	}
 	wg.Wait()
@@ -377,24 +393,8 @@ func (s *Server) apiGameOp(w http.ResponseWriter, r *http.Request) (any, error) 
 	switch op := r.PathValue("op"); op {
 	case "clone":
 		return s.jobs.Start("download "+g.Name, g.ID, env, func(j *Job) error { return clone(j, l.Workspace, g) }), nil
-	case "pull":
-		if err := needClone(); err != nil {
-			return nil, err
-		}
-		return s.jobs.Start("pull dev · "+g.Name, g.ID, env, func(j *Job) error { return pullDev(j, l.Workspace, g) }), nil
-	case "push":
-		if err := needClone(); err != nil {
-			return nil, err
-		}
-		return s.jobs.Start("push to dev · "+g.Name, g.ID, env, func(j *Job) error {
-			if err := pushDev(j, s.gh, l.Workspace, login, g, in.Message); err != nil {
-				return err
-			}
-			if strings.TrimSpace(in.Message) != "" {
-				_ = s.say(fmt.Sprintf("🟢 pushed to **%s** dev: %s", g.Name, in.Message))
-			}
-			return nil
-		}), nil
+	case "pull", "push":
+		return s.startSync(g, r.PathValue("op"), in.Message)
 	case "tomain":
 		return s.jobs.Start("dev → main · "+g.Name, g.ID, env, func(j *Job) error {
 			if err := ghMerge(j, s.gh, g.Repo, g.mainBranch(), g.devBranch()); err != nil {
@@ -452,19 +452,14 @@ func (s *Server) apiGameOp(w http.ResponseWriter, r *http.Request) (any, error) 
 			args = append([]string{"-e"}, args...)
 		}
 		return ok(), startDetached(godot, args...)
-	case "tool", "publish", "hotfix":
+	case "publish", "hotfix", "test":
+		kind := map[string]string{"publish": "update", "hotfix": "hotfix", "test": "test"}[r.PathValue("op")]
+		return s.startPublish(g, kind)
+	case "tool":
 		if err := needClone(); err != nil {
 			return nil, err
 		}
 		p := in.Path
-		if op == "publish" {
-			p = g.Publish
-		} else if op == "hotfix" {
-			p = g.Hotfix
-		}
-		if p == "" {
-			return nil, fmt.Errorf("%s has no %s script set (games tab → edit)", g.Name, op)
-		}
 		script := filepath.Join(dir, filepath.FromSlash(scriptOf(p)))
 		if rel, err := filepath.Rel(dir, script); err != nil || strings.HasPrefix(rel, "..") || !fileExists(script) {
 			return nil, fmt.Errorf("script not found: %s", scriptOf(p))

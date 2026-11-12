@@ -15,18 +15,28 @@ type Tool struct {
 
 // Game is one project hq manages. Source lives in Repo (private), player builds in Releases (public).
 type Game struct {
-	ID       string `json:"id"`
-	Name     string `json:"name"`
-	Genre    string `json:"genre"`
-	Repo     string `json:"repo"`
-	Releases string `json:"releases,omitempty"`
-	Dev      string `json:"dev,omitempty"`
-	Main     string `json:"main,omitempty"`
-	Engine   string `json:"engine,omitempty"`
-	Color    string `json:"color,omitempty"`
-	Tools    []Tool `json:"tools,omitempty"`
-	Publish  string `json:"publish,omitempty"`
-	Hotfix   string `json:"hotfix,omitempty"`
+	ID       string      `json:"id"`
+	Name     string      `json:"name"`
+	Genre    string      `json:"genre"`
+	Repo     string      `json:"repo"`
+	Releases string      `json:"releases,omitempty"`
+	Dev      string      `json:"dev,omitempty"`
+	Main     string      `json:"main,omitempty"`
+	Engine   string      `json:"engine,omitempty"`
+	Color    string      `json:"color,omitempty"`
+	Tools    []Tool      `json:"tools,omitempty"`
+	Publish  string      `json:"publish,omitempty"` // local script, run in hq with live output
+	Hotfix   string      `json:"hotfix,omitempty"`
+	Release  *ReleaseCfg `json:"release,omitempty"` // or: a github actions workflow does the release
+}
+
+// ReleaseCfg: publishing = starting a workflow_dispatch on github and watching it.
+type ReleaseCfg struct {
+	Workflow string            `json:"workflow"`         // e.g. release.yml
+	Ref      string            `json:"ref,omitempty"`    // branch the workflow runs on (main)
+	Update   map[string]string `json:"update,omitempty"` // inputs for an update
+	Hotfix   map[string]string `json:"hotfix,omitempty"` // inputs for a hotfix
+	Test     map[string]string `json:"test,omitempty"`   // inputs for a dry run (optional)
 }
 
 func (g Game) devBranch() string {
@@ -56,13 +66,16 @@ func defaultTeam() Team {
 		Studio: "fish market studios",
 		Games: []Game{
 			{ID: "secret", Name: "SECRET", Genre: "rpg", Repo: "ArthurJClack/secret", Releases: "ArthurJClack/secret-releases",
-				Engine: "godot", Color: "#c77dff", Publish: "tools/PUBLISH_UPDATE.bat", Hotfix: "tools/PUBLISH_HOTFIX.bat"},
+				Engine: "godot", Color: "#c77dff", Release: &ReleaseCfg{Workflow: "release.yml", Ref: "main",
+					Update: map[string]string{"kind": "update", "dry_run": "false"},
+					Hotfix: map[string]string{"kind": "hotfix", "dry_run": "false"},
+					Test:   map[string]string{"kind": "update", "dry_run": "true"}}},
 			{ID: "mars", Name: "FOR/AGAINST", Genre: "rts", Repo: "ArthurJClack/marsprivate", Releases: "ArthurJClack/mars",
 				Engine: "godot", Color: "#ff6b35"},
 			{ID: "shells", Name: "SHELLS", Genre: "fps", Repo: "ArthurJClack/shells", Releases: "ArthurJClack/shells-release",
 				Engine: "godot", Color: "#4cc9f0"},
 			{ID: "shitbox", Name: "SHITBOX RALLY", Genre: "racing", Repo: "ArthurJClack/shitbox-rally", Releases: "ArthurJClack/shitboxrally-releases",
-				Engine: "godot", Color: "#ffd166", Publish: "tools/publish_update.bat", Hotfix: "tools/publish_update.bat --hotfix",
+				Engine: "godot", Color: "#ffd166", Publish: "tools/publish_update.bat --yes", Hotfix: "tools/publish_update.bat --hotfix --yes",
 				Tools: []Tool{{Name: "shitbox dashboard", Path: "Shitbox Dashboard.bat"}}},
 		},
 	}

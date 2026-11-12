@@ -118,8 +118,29 @@ func remoteHas(dir, branch string) bool {
 
 // pullDev: get everyone's latest dev. On dev it rebases your local commits on top; on a clean
 // tree elsewhere it switches to dev; with unsaved work on another branch it merges dev in.
-func pullDev(j *Job, ws string, g Game) error {
+func pullDev(j *Job, ws string, g Game) ([]string, error) {
 	dir := gamePath(ws, g)
+	before := gitQuick(dir, "rev-parse", "HEAD")
+	err := pullDevInner(j, dir, g)
+	if err != nil {
+		return nil, err
+	}
+	return commitsBetween(dir, before, "HEAD"), nil
+}
+
+// commitsBetween lists "abc1234 message (who)" for a..b, newest first (max 30).
+func commitsBetween(dir, a, b string) []string {
+	if a == "" {
+		return nil
+	}
+	out := gitQuick(dir, "log", "--no-merges", "-n", "30", "--format=%h %s (%an)", a+".."+b)
+	if out == "" {
+		return []string{}
+	}
+	return strings.Split(out, "\n")
+}
+
+func pullDevInner(j *Job, dir string, g Game) error {
 	dev := g.devBranch()
 	if _, err := j.Run(dir, "git", "fetch", "--prune", "origin"); err != nil {
 		return err
@@ -146,8 +167,14 @@ func pullDev(j *Job, ws string, g Game) error {
 
 // pushDev: commit everything and land it on dev. From a side branch it pushes the branch and
 // merges it into dev on GitHub.
-func pushDev(j *Job, gh *GH, ws, login string, g Game, msg string) error {
+func pushDev(j *Job, gh *GH, ws, login string, g Game, msg string) ([]string, error) {
 	dir := gamePath(ws, g)
+	var sent []string
+	err := pushDevInner(j, gh, dir, login, g, msg, &sent)
+	return sent, err
+}
+
+func pushDevInner(j *Job, gh *GH, dir, login string, g Game, msg string, sent *[]string) error {
 	dev := g.devBranch()
 	ensureIdentity(j, dir, login)
 	if gitQuick(dir, "status", "--porcelain") != "" {
@@ -165,6 +192,13 @@ func pushDev(j *Job, gh *GH, ws, login string, g Game, msg string) error {
 		return err
 	}
 	branch := gitQuick(dir, "rev-parse", "--abbrev-ref", "HEAD")
+	note := func() {
+		if remoteHas(dir, dev) {
+			*sent = commitsBetween(dir, "origin/"+dev, "HEAD")
+		} else {
+			*sent = commitsBetween(dir, gitQuick(dir, "rev-list", "--max-parents=0", "-n", "1", "HEAD"), "HEAD")
+		}
+	}
 	if branch == dev || branch == "HEAD" {
 		if remoteHas(dir, dev) {
 			if _, err := j.Run(dir, "git", "pull", "--rebase", "--autostash", "origin", dev); err != nil {
@@ -172,9 +206,15 @@ func pushDev(j *Job, gh *GH, ws, login string, g Game, msg string) error {
 				return err
 			}
 		}
+		note()
+		if len(*sent) == 0 && remoteHas(dir, dev) {
+			j.Printf("nothing new to push\n")
+			return nil
+		}
 		_, err := j.Run(dir, "git", "push", "origin", "HEAD:refs/heads/"+dev)
 		return err
 	}
+	note()
 	if _, err := j.Run(dir, "git", "push", "-u", "origin", branch); err != nil {
 		return err
 	}
@@ -220,7 +260,12 @@ func devCopy(j *Job, ws string, g Game) (string, error) {
 		return "", err
 	}
 	if fileExists(filepath.Join(dir, ".git")) || dirExists(filepath.Join(dir, ".git")) {
-		if _, err := j.Run(dir, "git", "fetch", "--depth", "1", "origin", dev); err != nil {
+		// a worktree (.git is a file) shares objects with your clone: never make it shallow
+		args := []string{"fetch", "origin", dev}
+		if dirExists(filepath.Join(dir, ".git")) {
+			args = []string{"fetch", "--depth", "1", "origin", dev}
+		}
+		if _, err := j.Run(dir, "git", args...); err != nil {
 			return "", err
 		}
 		if _, err := j.Run(dir, "git", "checkout", "--detach", "-f", "FETCH_HEAD"); err != nil {
