@@ -85,7 +85,7 @@ function prompt2(title, label, placeholder = '', multiline = false) {
 }
 
 // ------------------------------------------------------------------ state
-const S = { state: null, remote: [], activity: [], board: [], chat: [], team: null, page: 'dash', filter: '', seenChat: +localStorage.getItem('hqSeen') || 0 };
+const S = { state: null, remote: [], activity: [], board: { cards: [], loaded: false, loading: false, error: '', at: 0, view: localStorage.getItem('hqBoard') || 'all', q: '', mine: false, prio: '', tag: '', allDone: false }, templates: {}, chat: [], chatLoaded: false, team: null, page: 'dash', seenChat: +localStorage.getItem('hqSeen') || 0 };
 const gameById = id => (S.state?.games || []).find(g => g.id === id);
 const gColor = id => gameById(id)?.color || '#8fd3ff';
 const studioReady = () => S.state?.studioRepo && S.state?.chatIssue;
@@ -164,6 +164,8 @@ function show(page) {
   localStorage.setItem('hqPage', page);
   render();
   if (page === 'team') loadTeam();
+  if (page === 'board' || (page === 'dash' && Date.now() - S.board.at > 20000)) loadBoard();
+  if (page === 'dash' && Date.now() - (S.remoteAt || 0) > 60000) loadRemote();
   if (page === 'chat' || page === 'dash') markRead();
 }
 $$('#nav a').forEach(a => a.onclick = () => show(a.dataset.page));
@@ -200,16 +202,16 @@ function renderSignin() {
 function renderDash() {
   const p = $('#page-dash');
   const me = S.state.me?.login;
-  const mine = S.board.filter(c => c.column !== 'done' && c.assignees.some(a => a.login === me));
+  const mine = sortCards(S.board.cards.filter(c => c.column !== 'done' && c.assignees.some(a => a.login === me)));
   p.innerHTML = `<div class="head"><h1>dashboard</h1><span class="grow"></span><button class="ghost small" id="dRef">refresh</button></div>
     <div class="grid cols-4">${S.state.games.map(gameTile).join('')}</div>
     <div class="dash">
       <div class="grid" style="align-content:start">
-        <div class="panel"><h2>recent work on dev</h2><div class="feed">${S.activity.length ? S.activity.slice(0, 14).map(a => `
+        <div class="panel"><h2>recent work on dev</h2><div class="feed">${!S.remoteLoaded ? '<div class="empty">loading…</div>' : S.activity.length ? S.activity.slice(0, 14).map(a => `
           <div class="it"><img class="av" src="${esc(a.avatar || '')}" alt="" onerror="this.style.visibility='hidden'">
           <div class="msg"><span class="tag c" style="--c:${gColor(a.game)}">${esc(a.game)}</span> ${esc(a.msg)} <span class="dim">· ${esc(a.who)}</span></div>
           <a class="dim mono" href="${esc(a.url)}" target="_blank">${ago(a.at)}</a></div>`).join('') : '<div class="empty">nothing yet</div>'}</div></div>
-        <div class="panel"><h2>my cards <a class="small" data-go="board">board →</a></h2>${mine.length ? mine.map(cardHTML).join('') : '<div class="empty">nothing assigned to you. lucky</div>'}</div>
+        <div class="panel"><h2>my cards <a class="small" data-go="board">board →</a></h2>${!S.board.loaded ? `<div class="empty">${S.board.error ? esc(S.board.error) : studioReady() ? 'loading…' : 'set up the studio repo first'}</div>` : mine.length ? mine.map(cardHTML).join('') : '<div class="empty">nothing assigned to you. lucky</div>'}</div>
       </div>
       <div class="panel"><h2>chat <a class="small" data-go="chat">open →</a></h2>${chatHTML(true)}</div>
     </div>`;
@@ -302,28 +304,100 @@ function editGames() {
 }
 
 // ---------- board
+const PRIO = { p0: ['urgent', '#ff5d73'], p1: ['high', '#ff9f43'], p2: ['normal', '#ffcc66'], p3: ['low', '#6e8a7a'] };
+const TAGS = ['bug', 'feature', 'design', 'art', 'audio', 'writing', 'tech', 'tools', 'world', 'combat', 'ui', 'steam', 'research', 'blocked'];
+const tagColor = t => ({ bug: '#ff5d73', feature: '#59d499', art: '#ff9eb5', design: '#8fd3ff', audio: '#ffd166', writing: '#c9b6ff', tech: '#5fa8ff', tools: '#a78bfa', world: '#2dd4bf', combat: '#ff6b35', ui: '#f9c0a8', steam: '#9aa7b4', research: '#9fd8d8', blocked: '#ffffff' }[t] || '#7b8fa3');
+const today = () => new Date().toISOString().slice(0, 10);
+function dueTag(d, done) {
+  if (!d) return '';
+  const days = Math.round((new Date(d + 'T12:00') - new Date(today() + 'T12:00')) / 864e5);
+  const cls = done ? '' : days < 0 ? 'bad' : days <= 2 ? 'warn' : '';
+  const txt = days === 0 ? 'today' : days === 1 ? 'tomorrow' : days === -1 ? 'yesterday' : new Date(d + 'T12:00').toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+  return `<span class="tag ${cls}" title="due ${d}">⏱ ${txt}</span>`;
+}
+const prioRank = c => c.priority ? +c.priority[1] : 4;
+function sortCards(list) {
+  return list.sort((a, b) => prioRank(a) - prioRank(b) || (a.due || '9999').localeCompare(b.due || '9999') || new Date(b.updated) - new Date(a.updated));
+}
+
 function cardHTML(c) {
   const g = c.game ? gameById(c.game) : null;
-  return `<div class="card" draggable="true" data-card="${c.number}" style="--c:${g ? esc(g.color) : 'transparent'}">
+  const p = PRIO[c.priority];
+  return `<div class="card" draggable="true" data-card="${c.number}" style="--c:${p ? p[1] : g ? esc(g.color) : 'transparent'}">
+    ${c.tags.length ? `<div class="ctags">${c.tags.map(t => `<i style="background:${tagColor(t)}" title="${esc(t)}"></i>`).join('')}</div>` : ''}
     <div class="t">${esc(c.title)}</div>
-    <div class="m"><span class="chips">${g ? `<span class="tag c" style="--c:${esc(g.color)}">${esc(g.id)}</span>` : ''}<span class="dim mono" style="font-size:11px">#${c.number}${c.comments ? ` · 💬${c.comments}` : ''}</span></span>
-    <span>${c.assignees.map(a => `<img class="av" src="${esc(a.avatar_url)}&s=44" title="${esc(a.login)}" alt="">`).join('')}</span></div></div>`;
+    <div class="m"><span class="chips">
+      ${S.board.view === 'all' && g ? `<span class="tag c" style="--c:${esc(g.color)}">${esc(g.id)}</span>` : ''}
+      ${p && c.column !== 'done' ? `<span class="tag" style="color:${p[1]};border-color:${p[1]}55">${p[0]}</span>` : ''}
+      ${dueTag(c.due, c.column === 'done')}
+      ${c.checkTotal ? `<span class="tag ${c.checkDone === c.checkTotal ? 'ok' : ''}">☑ ${c.checkDone}/${c.checkTotal}</span>` : ''}
+      ${c.comments ? `<span class="dim mono" style="font-size:11px">💬${c.comments}</span>` : ''}
+      ${c.body && !c.checkTotal ? '<span class="dim" title="has details">≡</span>' : ''}
+    </span>
+    <span class="avs">${c.assignees.map(a => `<img class="av" src="${esc(a.avatar_url)}&s=44" title="${esc(a.login)}" alt="">`).join('')}</span></div></div>`;
+}
+
+function boardFilter(c) {
+  const B = S.board, q = B.q.trim().toLowerCase();
+  if (B.view !== 'all' && c.game !== B.view) return false;
+  if (B.mine && !c.assignees.some(a => a.login === S.state.me.login)) return false;
+  if (B.tag && !c.tags.includes(B.tag)) return false;
+  if (B.prio && c.priority !== B.prio) return false;
+  if (q && !(c.title.toLowerCase().includes(q) || c.body.toLowerCase().includes(q) || ('#' + c.number) === q)) return false;
+  return true;
 }
 
 function renderBoard() {
   const p = $('#page-board');
   if (!studioReady()) { p.innerHTML = '<div class="head"><h1>board</h1></div><div class="empty">set up the studio repo first (banner up top)</div>'; return; }
-  const f = S.filter;
-  const cards = S.board.filter(c => !f || c.game === f);
-  p.innerHTML = `<div class="head"><h1>board</h1><span class="chips"><span class="tag chip ${!f ? 'on' : ''}" data-f="">all</span>${S.state.games.map(g => `<span class="tag chip ${f === g.id ? 'on' : ''}" data-f="${esc(g.id)}">${esc(g.id)}</span>`).join('')}</span><span class="grow"></span><button class="pri small" id="bNew">+ card</button></div>
-    <div class="board">${S.state.columns.map(col => {
-      const list = cards.filter(c => c.column === col);
-      return `<div class="col" data-col="${col}"><header><span>${col}</span><span class="dim mono">${list.length}</span></header>${list.map(cardHTML).join('')}
-        <button class="ghost small" data-add="${col}" style="width:100%">+ add</button></div>`;
-    }).join('')}</div>`;
-  $$('[data-f]', p).forEach(c => c.onclick = () => { S.filter = c.dataset.f; renderBoard(); });
+  const B = S.board;
+  const cards = B.cards.filter(boardFilter);
+  const viewGame = B.view !== 'all' ? gameById(B.view) : null;
+  const tpl = viewGame && S.templates[B.view];
+  const onBoard = B.cards.filter(c => c.game === B.view).length;
+  const usedTags = [...new Set(B.cards.flatMap(c => c.tags))].sort();
+  const keepFocus = document.activeElement?.id === 'bq';
+  p.innerHTML = `<div class="head"><h1>board</h1>
+      <span class="chips boards">${[['all', 'everything', '#8fd3ff'], ...S.state.games.map(g => [g.id, g.name, g.color])].map(([id, name, col]) =>
+        `<span class="tag chip ${B.view === id ? 'on' : ''}" data-view="${esc(id)}" style="--c:${esc(col)}">${esc(name.toLowerCase())} <b class="dim">${id === 'all' ? B.cards.filter(c => c.column !== 'done').length : B.cards.filter(c => c.game === id && c.column !== 'done').length}</b></span>`).join('')}</span>
+      <span class="grow"></span><button class="pri small" id="bNew">+ card</button></div>
+    <div class="head filters">
+      <input id="bq" placeholder="search cards…" value="${esc(B.q)}" style="max-width:220px">
+      <span class="tag chip ${B.mine ? 'on' : ''}" id="bMine">mine</span>
+      <select id="bPrio" style="width:auto"><option value="">any priority</option>${Object.entries(PRIO).map(([k, v]) => `<option value="${k}" ${B.prio === k ? 'selected' : ''}>${v[0]}</option>`).join('')}</select>
+      <select id="bTag" style="width:auto"><option value="">any tag</option>${usedTags.map(t => `<option ${B.tag === t ? 'selected' : ''}>${esc(t)}</option>`).join('')}</select>
+      ${B.q || B.mine || B.prio || B.tag ? '<button class="ghost small" id="bClear">clear</button>' : ''}
+      <span class="grow"></span>
+      ${B.error ? `<span class="tag bad">${esc(B.error)}</span> <button class="small" id="bRetry">retry</button>` : B.loading ? '<span class="dim">syncing…</span>' : `<span class="dim" style="font-size:12px">synced ${B.at ? ago(B.at) : ''}</span>`}
+    </div>
+    ${tpl && onBoard < 5 && B.loaded ? `<div class="notice" style="margin-bottom:12px"><div class="grow"><b>${esc(viewGame.name)} board is empty.</b> <span class="dim">load the starter board: ${tpl.cards} cards from the game's docs (status, design plans, known issues).</span></div><button class="pri" id="bTpl">load starter board</button></div>` : ''}
+    ${!B.loaded && !B.error ? '<div class="empty">loading the board…</div>' : `<div class="board">${S.state.columns.map(col => {
+      let list = sortCards(cards.filter(c => c.column === col));
+      const total = list.length, cap = col === 'done' && !B.allDone ? 12 : 1e9;
+      list = list.slice(0, cap);
+      return `<div class="col" data-col="${col}"><header><span>${col}</span><span class="dim mono">${total}</span></header>${list.map(cardHTML).join('')}
+        ${total > list.length ? `<button class="ghost small" id="bMoreDone" style="width:100%">show ${total - list.length} more</button>` : ''}
+        ${col !== 'done' ? `<div class="quick"><input data-quick="${col}" placeholder="+ add a card"></div>` : ''}</div>`;
+    }).join('')}</div>`}`;
+  $$('[data-view]', p).forEach(c => c.onclick = () => { B.view = c.dataset.view; localStorage.setItem('hqBoard', B.view); renderBoard(); });
   $('#bNew').onclick = () => cardModal(null, 'todo');
-  $$('[data-add]', p).forEach(b => b.onclick = () => cardModal(null, b.dataset.add));
+  const bq = $('#bq'); bq.oninput = () => { B.q = bq.value; renderBoard(); };
+  if (keepFocus) { bq.focus(); bq.setSelectionRange(bq.value.length, bq.value.length); }
+  $('#bMine').onclick = () => { B.mine = !B.mine; renderBoard(); };
+  $('#bPrio').onchange = e => { B.prio = e.target.value; renderBoard(); };
+  $('#bTag').onchange = e => { B.tag = e.target.value; renderBoard(); };
+  if ($('#bClear')) $('#bClear').onclick = () => { B.q = ''; B.mine = false; B.prio = ''; B.tag = ''; renderBoard(); };
+  if ($('#bRetry')) $('#bRetry').onclick = () => loadBoard(true);
+  if ($('#bMoreDone')) $('#bMoreDone').onclick = () => { B.allDone = true; renderBoard(); };
+  if ($('#bTpl')) $('#bTpl').onclick = () => runJob(api('/api/board/import', { body: { game: B.view } }), () => loadBoard(true));
+  $$('[data-quick]', p).forEach(inp => inp.onkeydown = async e => {
+    if (e.key !== 'Enter' || !inp.value.trim()) return;
+    const title = inp.value.trim(); inp.value = '';
+    try {
+      const c = await api('/api/board', { body: { title, column: inp.dataset.quick, game: B.view !== 'all' ? B.view : '' } });
+      B.cards.unshift(c); renderBoard(); $(`[data-quick="${inp.dataset.quick}"]`)?.focus();
+    } catch (er) { fail(er); }
+  });
   bindCards(p);
   $$('.col', p).forEach(col => {
     col.ondragover = e => { e.preventDefault(); col.classList.add('drop'); };
@@ -331,47 +405,111 @@ function renderBoard() {
     col.ondrop = async e => {
       e.preventDefault(); col.classList.remove('drop');
       const n = +e.dataTransfer.getData('text/card'), dest = col.dataset.col;
-      const c = S.board.find(x => x.number === n);
+      const c = B.cards.find(x => x.number === n);
       if (!c || c.column === dest) return;
       c.column = dest; renderBoard(); // optimistic
-      try { await api('/api/board/' + n, { method: 'PATCH', body: { column: dest } }); } catch (err) { fail(err); }
-      loadBoard();
+      try { Object.assign(c, await api('/api/board/' + n, { method: 'PATCH', body: { column: dest } })); } catch (err) { fail(err); loadBoard(true); }
     };
   });
 }
 
 function bindCards(root) {
   $$('[data-card]', root).forEach(el => {
-    el.onclick = () => cardModal(S.board.find(c => c.number === +el.dataset.card));
+    el.onclick = () => cardModal(S.board.cards.find(c => c.number === +el.dataset.card));
     el.ondragstart = e => { e.dataTransfer.setData('text/card', el.dataset.card); el.classList.add('dragging'); };
     el.ondragend = () => el.classList.remove('dragging');
   });
 }
 
+// checklist lines live in the body as "- [ ] item"; the modal edits them separately
+const CHECK = /^\s*[-*] \[([ xX])\] (.*)$/;
+function splitBody(body) {
+  const desc = [], items = [];
+  for (const line of (body || '').split('\n')) {
+    const m = line.match(CHECK);
+    if (m) items.push({ done: m[1] !== ' ', text: m[2] }); else desc.push(line);
+  }
+  return { desc: desc.join('\n').trim(), items };
+}
+const joinBody = (desc, items) => [desc.trim(), items.length ? items.map(i => `- [${i.done ? 'x' : ' '}] ${i.text}`).join('\n') : ''].filter(Boolean).join('\n\n');
+
 function cardModal(c, col) {
+  const B = S.board;
   const members = S.team?.members || [];
-  const assignee = c?.assignees?.[0]?.login || '';
-  const people = [...new Set([S.state.me.login, ...members.map(m => m.login), assignee].filter(Boolean))];
-  modal(`<h1>${c ? '#' + c.number : 'new card'}</h1>
-    <label>title</label><input id="ct" value="${esc(c?.title || '')}">
-    <label>details</label><textarea id="cb">${esc(c?.body || '')}</textarea>
+  const people = [...new Set([S.state.me.login, ...members.map(m => m.login), ...(c?.assignees || []).map(a => a.login)].filter(Boolean))];
+  const st = { ...splitBody(c?.body), tags: [...(c?.tags || [])], who: (c?.assignees || []).map(a => a.login) };
+  const allTags = [...new Set([...TAGS, ...B.cards.flatMap(x => x.tags), ...st.tags])];
+  modal(`<div class="row" style="align-items:baseline"><h1 style="flex:1">${c ? '#' + c.number : 'new card'}</h1>${c ? `<span class="dim" style="font-size:12px;flex:none">by ${esc(c.author)} · ${ago(c.created)}</span>` : ''}</div>
+    <input id="ct" class="ctitle" value="${esc(c?.title || '')}" placeholder="what needs doing">
     <div class="row">
-      <div><label>column</label><select id="cc">${S.state.columns.map(x => `<option ${x === (c?.column || col) ? 'selected' : ''}>${x}</option>`).join('')}</select></div>
-      <div><label>game</label><select id="cg"><option value="">—</option>${S.state.games.map(g => `<option value="${esc(g.id)}" ${g.id === (c?.game || S.filter) ? 'selected' : ''}>${esc(g.name)}</option>`).join('')}</select></div>
-      <div><label>who</label><select id="ca"><option value="">nobody</option>${people.map(u => `<option ${u === assignee ? 'selected' : ''}>${esc(u)}</option>`).join('')}</select></div>
+      <div><label>list</label><select id="cc">${S.state.columns.map(x => `<option ${x === (c?.column || col) ? 'selected' : ''}>${x}</option>`).join('')}</select></div>
+      <div><label>game</label><select id="cg"><option value="">—</option>${S.state.games.map(g => `<option value="${esc(g.id)}" ${g.id === (c ? c.game : B.view) ? 'selected' : ''}>${esc(g.name)}</option>`).join('')}</select></div>
+      <div><label>priority</label><select id="cp"><option value="">none</option>${Object.entries(PRIO).map(([k, v]) => `<option value="${k}" ${c?.priority === k ? 'selected' : ''}>${v[0]}</option>`).join('')}</select></div>
+      <div><label>due</label><input id="cdue" type="date" value="${esc(c?.due || '')}"></div>
     </div>
+    <label>tags</label><div class="chips" id="ctags">${allTags.map(t => `<span class="tag chip ${st.tags.includes(t) ? 'on' : ''}" data-tag="${esc(t)}"><i class="dot" style="background:${tagColor(t)}"></i>${esc(t)}</span>`).join('')}<input id="cnewtag" placeholder="+ tag" style="width:80px;padding:2px 8px;font-size:12px"></div>
+    <label>who</label><div class="chips" id="cwho">${people.map(u => `<span class="tag chip ${st.who.includes(u) ? 'on' : ''}" data-who="${esc(u)}">${esc(u)}</span>`).join('')}</div>
+    <label>details</label><textarea id="cb" placeholder="notes, links, repro steps… (markdown)">${esc(st.desc)}</textarea>
+    <label>checklist <span id="cprog" class="dim"></span></label><div class="prog"><i id="cbar"></i></div><div id="clist"></div>
+    <div class="row"><input id="cadd" placeholder="add an item, enter to add"></div>
     <div class="btns"><button class="pri" id="cs">${c ? 'save' : 'add card'}</button><button data-close>cancel</button><span style="flex:1"></span>
-      ${c ? `<a href="${esc(c.url)}" target="_blank"><button class="ghost">comments on github</button></a><button class="danger" id="cd">delete</button>` : ''}</div>`,
+      ${c ? `<a href="${esc(c.url)}" target="_blank"><button class="ghost small">github</button></a><button class="danger small" id="cd">delete</button>` : ''}</div>
+    ${c ? `<label style="margin-top:16px">comments</label><div id="ccom" class="msgs" style="max-height:260px"><div class="dim">loading…</div></div>
+      <div class="say"><input id="csay" placeholder="write a comment"><button class="small" id="csayGo">post</button></div>` : ''}`,
   (box, close) => {
+    const drawList = () => {
+      const done = st.items.filter(i => i.done).length;
+      $('#cprog', box).textContent = st.items.length ? `${done}/${st.items.length}` : '';
+      $('#cbar', box).style.width = st.items.length ? (100 * done / st.items.length) + '%' : '0';
+      $('#cbar', box).parentElement.style.display = st.items.length ? '' : 'none';
+      $('#clist', box).innerHTML = st.items.map((it, i) => `<div class="citem ${it.done ? 'done' : ''}"><input type="checkbox" data-i="${i}" ${it.done ? 'checked' : ''}><span>${esc(it.text)}</span><button class="ghost small" data-del="${i}">×</button></div>`).join('');
+      $$('[data-i]', box).forEach(cb => cb.onchange = () => { st.items[+cb.dataset.i].done = cb.checked; drawList(); });
+      $$('[data-del]', box).forEach(b => b.onclick = () => { st.items.splice(+b.dataset.del, 1); drawList(); });
+    };
+    drawList();
+    $('#cadd', box).onkeydown = e => { if (e.key === 'Enter' && e.target.value.trim()) { st.items.push({ done: false, text: e.target.value.trim() }); e.target.value = ''; drawList(); } };
+    const bindTag = el => el.onclick = () => { const t = el.dataset.tag; st.tags = st.tags.includes(t) ? st.tags.filter(x => x !== t) : [...st.tags, t]; el.classList.toggle('on'); };
+    $$('[data-tag]', box).forEach(bindTag);
+    $('#cnewtag', box).onkeydown = e => {
+      const t = e.target.value.trim().toLowerCase().replace(/\s+/g, '-');
+      if (e.key !== 'Enter' || !t) return;
+      if (!st.tags.includes(t)) st.tags.push(t);
+      const el = document.createElement('span'); el.className = 'tag chip on'; el.dataset.tag = t; el.innerHTML = `<i class="dot" style="background:${tagColor(t)}"></i>${esc(t)}`;
+      e.target.before(el); bindTag(el); e.target.value = '';
+    };
+    $$('[data-who]', box).forEach(el => el.onclick = () => { const u = el.dataset.who; st.who = st.who.includes(u) ? st.who.filter(x => x !== u) : [...st.who, u]; el.classList.toggle('on'); });
     $('#cs', box).onclick = async () => {
-      const body = { title: $('#ct', box).value, body: $('#cb', box).value, column: $('#cc', box).value, game: $('#cg', box).value, assignee: $('#ca', box).value };
+      const body = { title: $('#ct', box).value, body: joinBody($('#cb', box).value, st.items), column: $('#cc', box).value, game: $('#cg', box).value,
+        priority: $('#cp', box).value, due: $('#cdue', box).value, tags: st.tags, assignees: st.who };
+      if (!body.title.trim()) return fail('give it a title');
       try {
-        if (c) await api('/api/board/' + c.number, { method: 'PATCH', body }); else await api('/api/board', { body });
-        close(); loadBoard();
+        const saved = c ? await api('/api/board/' + c.number, { method: 'PATCH', body }) : await api('/api/board', { body });
+        const i = B.cards.findIndex(x => x.number === saved.number);
+        if (i >= 0) B.cards[i] = saved; else B.cards.unshift(saved);
+        close(); render();
       } catch (e) { fail(e); }
     };
     const d = $('#cd', box);
-    if (d) d.onclick = async () => { try { await api('/api/board/' + c.number, { method: 'PATCH', body: { delete: true } }); close(); loadBoard(); } catch (e) { fail(e); } };
+    if (d) d.onclick = async () => {
+      if (!confirm('delete this card? (it gets closed on github, not erased)')) return;
+      try { await api('/api/board/' + c.number, { method: 'PATCH', body: { delete: true } }); B.cards = B.cards.filter(x => x.number !== c.number); close(); render(); } catch (e) { fail(e); }
+    };
+    if (c) {
+      const loadCom = async () => {
+        try {
+          const cs = await api(`/api/board/${c.number}/comments`);
+          $('#ccom', box).innerHTML = cs.length ? cs.map(m => `<div class="m1"><img class="av big" src="${esc(m.avatar)}&s=60" alt=""><div><div class="who">${esc(m.who)}<small>${ago(m.at)}</small></div><div class="txt">${md(m.text)}</div></div></div>`).join('') : '<div class="dim" style="font-size:13px">no comments yet</div>';
+        } catch (e) { $('#ccom', box).innerHTML = `<div class="tag bad">${esc(e.message)}</div>`; }
+      };
+      loadCom();
+      const post = async () => {
+        const t = $('#csay', box).value.trim(); if (!t) return;
+        $('#csay', box).value = '';
+        try { await api(`/api/board/${c.number}/comments`, { body: { text: t } }); c.comments++; loadCom(); } catch (e) { fail(e); }
+      };
+      $('#csayGo', box).onclick = post;
+      $('#csay', box).onkeydown = e => e.key === 'Enter' && post();
+    }
   });
 }
 
@@ -385,7 +523,7 @@ function chatHTML(mini) {
     return `<div class="m1 ${cont ? 'cont' : ''}"><img class="av big" src="${esc(m.avatar)}&s=60" alt="">
       <div>${cont ? '' : `<div class="who">${esc(m.who)}<small>${ago(m.at)}</small></div>`}<div class="txt">${md(m.text)}</div></div></div>`;
   }).join('');
-  return `<div class="chat ${mini ? 'mini' : ''}"><div class="msgs">${rows || '<div class="empty">say hi</div>'}</div>
+  return `<div class="chat ${mini ? 'mini' : ''}"><div class="msgs">${rows || `<div class="empty">${!S.chatLoaded ? 'loading…' : S.chatError ? esc(S.chatError) : 'say hi'}</div>`}</div>
     <div class="say"><input class="sayIn" placeholder="message ${esc(S.state.studio)}"><button class="pri sayGo">send</button></div></div>`;
 }
 
@@ -526,11 +664,27 @@ function renderSettings() {
 // ------------------------------------------------------------------ loading + polling
 // re-render only when it won't eat what someone is typing
 const busy = () => !$('#modal').classList.contains('hidden') || document.activeElement?.matches('input,textarea,select');
-async function loadBoard() { if (!studioReady()) return; try { S.board = await api('/api/board'); if ((S.page === 'board' || S.page === 'dash') && !busy()) render(); } catch (e) { } }
+// data that arrives while you're typing waits; it's drawn as soon as you click out (see focusout below)
+let pendingRender = false;
+function softRender(pages) { if (!pages.includes(S.page)) return; if (busy()) pendingRender = true; else render(); }
+document.addEventListener('focusout', () => setTimeout(() => { if (pendingRender && !busy()) { pendingRender = false; render(); } }, 50));
+async function loadBoard(force) {
+  const B = S.board;
+  if (!studioReady() || (B.loading && !force)) return;
+  B.loading = true;
+  try {
+    B.cards = await api('/api/board'); B.loaded = true; B.error = ''; B.at = Date.now();
+  } catch (e) {
+    B.error = 'board: ' + e.message; // keep showing the last good cards
+  } finally { B.loading = false; }
+  softRender(['board', 'dash']);
+}
 async function loadTeam() { try { S.team = await api('/api/team'); if (S.page === 'team') renderTeam(); } catch (e) { fail(e); } }
 async function loadChat() {
   if (!studioReady()) return;
-  let msgs; try { msgs = await api('/api/chat'); } catch (e) { return; }
+  let msgs; try { msgs = await api('/api/chat'); S.chatError = ''; } catch (e) { S.chatError = e.message; return; }
+  const first = !S.chatLoaded; S.chatLoaded = true;
+  if (first) { S.chat = msgs; softRender(['chat', 'dash']); return; }
   const changed = msgs.length !== S.chat.length || msgs.at(-1)?.id !== S.chat.at(-1)?.id;
   S.chat = msgs;
   if (!changed) return;
@@ -543,16 +697,19 @@ async function loadChat() {
 async function loadRemote() {
   try {
     const [r, a] = await Promise.all([api('/api/remote'), api('/api/activity')]);
-    S.remote = r; S.activity = a;
-    if (S.page === 'dash' && !busy()) renderDash();
-  } catch (e) { }
+    S.remote = r; S.activity = a; S.remoteLoaded = true; S.remoteAt = Date.now();
+    softRender(['dash']);
+  } catch (e) { S.remoteLoaded = true; }
 }
 
 async function refresh(all) {
   // don't wipe a modal or a half-typed chat message: only re-render when nothing's open
   await loadState().catch(fail);
   if (!S.state.signedIn) return render();
-  if (all) { await Promise.all([loadRemote(), loadBoard(), loadChat()]); if (!S.team) loadTeam(); }
+  if (all) {
+    if (!Object.keys(S.templates).length) api('/api/templates').then(t => { S.templates = t; softRender(['board']); }).catch(() => { });
+    await Promise.all([loadRemote(), loadBoard(true), loadChat()]); if (!S.team) loadTeam();
+  }
   if (!busy()) render();
 }
 

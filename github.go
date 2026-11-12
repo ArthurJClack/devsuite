@@ -66,9 +66,11 @@ func (g *GH) Do(method, path string, body, out any) (string, error) {
 		req.Header.Set("Content-Type", "application/json")
 	}
 	key := path
+	var sent cached // the copy a 304 refers to, even if a write drops the cache meanwhile
 	if method == "GET" {
 		g.mu.Lock()
 		if c, ok := g.cache[key]; ok {
+			sent = c
 			req.Header.Set("If-None-Match", c.etag)
 		}
 		g.mu.Unlock()
@@ -83,10 +85,7 @@ func (g *GH) Do(method, path string, body, out any) (string, error) {
 	data, _ := io.ReadAll(resp.Body)
 	link := resp.Header.Get("Link")
 	if resp.StatusCode == http.StatusNotModified {
-		g.mu.Lock()
-		c := g.cache[key]
-		g.mu.Unlock()
-		data, link = c.body, c.link
+		data, link = sent.body, sent.link
 	} else if resp.StatusCode >= 300 {
 		var m struct {
 			Message string `json:"message"`

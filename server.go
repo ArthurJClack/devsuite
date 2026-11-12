@@ -158,6 +158,35 @@ func (s *Server) routes() http.Handler {
 		}
 		return s.editCard(n, e)
 	})
+	h("GET /api/board/{n}/comments", func(w http.ResponseWriter, r *http.Request) (any, error) {
+		n, _ := strconv.Atoi(r.PathValue("n"))
+		return s.cardComments(n)
+	})
+	h("POST /api/board/{n}/comments", func(w http.ResponseWriter, r *http.Request) (any, error) {
+		n, _ := strconv.Atoi(r.PathValue("n"))
+		var in struct{ Text string }
+		if err := readJSON(r, &in); err != nil {
+			return nil, err
+		}
+		if strings.TrimSpace(in.Text) == "" {
+			return nil, fmt.Errorf("empty comment")
+		}
+		return ok(), s.addCardComment(n, in.Text)
+	})
+	h("GET /api/templates", func(w http.ResponseWriter, r *http.Request) (any, error) {
+		out := map[string]any{}
+		for g, t := range loadTemplates() {
+			out[g] = map[string]any{"name": t.Name, "cards": len(t.Cards)}
+		}
+		return out, nil
+	})
+	h("POST /api/board/import", func(w http.ResponseWriter, r *http.Request) (any, error) {
+		var in struct{ Game string }
+		if err := readJSON(r, &in); err != nil {
+			return nil, err
+		}
+		return s.jobs.Start("starter board · "+in.Game, "", nil, func(j *Job) error { return s.importTemplate(j, in.Game) }), nil
+	})
 	h("GET /api/chat", func(w http.ResponseWriter, r *http.Request) (any, error) { return s.chat() })
 	h("POST /api/chat", func(w http.ResponseWriter, r *http.Request) (any, error) {
 		var in struct{ Text string }

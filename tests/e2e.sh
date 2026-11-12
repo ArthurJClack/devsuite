@@ -32,7 +32,7 @@ EOF
 mkdir -p "$T/bin"; printf '#!/bin/sh\necho "$@" >> "%s/godot.log"\n[ "$1" = --headless ] && mkdir -p "$3/.godot"\nexit 0\n' "$T" > "$T/bin/godot"; chmod +x "$T/bin/godot"
 export PATH="$T/bin:$PATH"
 python3 tests/fakegh.py "$R" 7398 & FAKE=$!
-HQ_API=http://127.0.0.1:7398 HQ_GIT_BASE="file://$R/" "$T/hq" --port 7399 --no-browser > "$T/hq.log" 2>&1 & HQ=$!
+HQ_IMPORT_PACE_MS=0 HQ_API=http://127.0.0.1:7398 HQ_GIT_BASE="file://$R/" "$T/hq" --port 7399 --no-browser > "$T/hq.log" 2>&1 & HQ=$!
 trap 'kill $FAKE $HQ 2>/dev/null || true' EXIT
 sleep 1
 K=$(cat "$HQ_HOME/key")
@@ -99,6 +99,25 @@ c http://127.0.0.1:7399/api/board | python3 -c '
 import json,sys;b=json.load(sys.stdin);cols={c["number"]:c["column"] for c in b}
 assert len(b)==4 and cols[3]=="done" and cols[2]=="todo" and cols[5]=="review", b
 print("✓ board: create + move (chat issue hidden)")'
+
+# board v2: priority, tags, due date, checklist, multiple assignees, comments, starter board
+c -X PATCH http://127.0.0.1:7399/api/board/2 -d '{"priority":"p0","tags":["bug","combat"],"due":"2026-12-01","body":"feels like ice\n\n- [x] repro\n- [ ] fix","assignees":["arthur","maya"]}' | python3 -c '
+import json,sys;c=json.load(sys.stdin)
+assert c["priority"]=="p0" and c["tags"]==["bug","combat"] and c["due"]=="2026-12-01" and (c["checkDone"],c["checkTotal"])==(1,2) and len(c["assignees"])==2 and "hq:due" not in c["body"] and c["column"]=="todo", c
+print("✓ card: priority, tags, due, checklist, assignees")'
+c -X PATCH http://127.0.0.1:7399/api/board/2 -d '{"column":"doing"}' | python3 -c 'import json,sys;c=json.load(sys.stdin);assert c["due"]=="2026-12-01" and c["priority"]=="p0" and c["column"]=="doing",c;print("✓ moving keeps the rest")'
+c -X POST http://127.0.0.1:7399/api/board/2/comments -d '{"text":"on it"}' >/dev/null
+c http://127.0.0.1:7399/api/board/2/comments | grep -q '"on it"' && ok "card comments"
+c http://127.0.0.1:7399/api/templates | grep -q '"secret"' && ok "secret starter board listed"
+c -X POST http://127.0.0.1:7399/api/board/import -d '{"game":"secret"}' | wait_job | tail -1
+c -X POST http://127.0.0.1:7399/api/board/import -d '{"game":"secret"}' | wait_job | tail -1
+c http://127.0.0.1:7399/api/board | python3 -c '
+import json,sys;b=json.load(sys.stdin);s=[c for c in b if c["game"]=="secret"]
+assert len(s)==35+1, len(s)
+pick=[c for c in s if c["title"].startswith("pick the combat")][0]
+assert pick["column"]=="doing" and pick["priority"]=="p0" and pick["checkTotal"]==6, pick
+assert sum(1 for c in s if c["column"]=="done")>=7, [c["column"] for c in s]
+print("✓ starter board imported once (no dupes on re-import)")'
 
 # chat
 c -X POST http://127.0.0.1:7399/api/chat -d '{"text":"yo who broke the wrx"}' >/dev/null

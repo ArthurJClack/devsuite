@@ -10,7 +10,7 @@ works with every game we have in dev: **SECRET** (rpg), **FOR/AGAINST** (rts), *
 | --- | --- |
 | dashboard | every game at a glance: latest build + downloads, how much of dev isn't on main yet, open PRs, where you are locally. recent work feed, your cards, mini chat |
 | games | **▶ play dev**: runs the latest dev from github in its own copy (`.dev/<game>`), even if you haven't downloaded the game, without touching your work. download the source, **pull dev**, **push to dev**, **dev → main**, open in godot, play, open the folder, run any of the game's tools (`*.bat` in the root and `tools/`), publish an update or hotfix |
-| board | trello-style board: backlog / todo / doing / review / done. drag cards, tag a game, assign someone |
+| board | trello-style: a board per game (or everything), lists backlog / todo / doing / review / done, drag cards between them, quick-add, priorities, colored tags, due dates (overdue goes red), checklists with progress, several people per card, comments, search + filters. each game can ship a starter board (`templates/<game>.json`, SECRET's comes from its docs) |
 | chat | small team chat. pushes and merges post in it automatically |
 | team | add someone as a collaborator to any of the repos, see who has access / pending invites, and **make their package**: a zip with hq + the studio settings. they unzip, double-click, sign in, done |
 | settings | where games download to, godot path, which studio repo, sign out |
