@@ -219,7 +219,7 @@ function renderSignin() {
   };
   $('#useCli').onclick = () => go('');
   $('#tokGo').onclick = () => go($('#tok').value);
-  $('#tok').onkeydown = e => e.key === 'Enter' && go($('#tok').value);
+  $('#tok').onkeydown = e => { if (e.key === 'Enter') go($('#tok').value); };
 }
 
 // ---------- dashboard
@@ -494,7 +494,8 @@ function renderBoard() {
     col.ondragleave = () => col.classList.remove('drop');
     col.ondrop = async e => {
       e.preventDefault(); col.classList.remove('drop');
-      const n = +e.dataTransfer.getData('text/card'), dest = col.dataset.col;
+      S.dragging = false;
+      const n = +(e.dataTransfer.getData('text/plain') || '').replace('card:', ''), dest = col.dataset.col;
       const c = B.cards.find(x => x.number === n);
       if (!c || c.column === dest) return;
       c.column = dest; renderBoard(); // optimistic
@@ -506,8 +507,9 @@ function renderBoard() {
 function bindCards(root) {
   $$('[data-card]', root).forEach(el => {
     el.onclick = () => cardModal(S.board.cards.find(c => c.number === +el.dataset.card));
-    el.ondragstart = e => { e.dataTransfer.setData('text/card', el.dataset.card); el.classList.add('dragging'); };
-    el.ondragend = () => el.classList.remove('dragging');
+    // polls don't redraw mid-drag (that would drop the card on the floor)
+    el.ondragstart = e => { S.dragging = true; e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', 'card:' + el.dataset.card); el.classList.add('dragging'); };
+    el.ondragend = () => { S.dragging = false; el.classList.remove('dragging'); if (pendingRender) { pendingRender = false; render(); } };
   });
 }
 
@@ -598,7 +600,7 @@ function cardModal(c, col) {
         try { await api(`/api/board/${c.number}/comments`, { body: { text: t } }); c.comments++; loadCom(); } catch (e) { fail(e); }
       };
       $('#csayGo', box).onclick = post;
-      $('#csay', box).onkeydown = e => e.key === 'Enter' && post();
+      $('#csay', box).onkeydown = e => { if (e.key === 'Enter') post(); };
     }
   });
 }
@@ -707,7 +709,7 @@ function bindChat(root) {
     loadChat();
   };
   $('.sayGo', root).onclick = send;
-  inp.onkeydown = e => e.key === 'Enter' && send();
+  inp.onkeydown = e => { if (e.key === 'Enter') send(); };
 }
 
 function rerenderChat() {
@@ -831,11 +833,20 @@ function renderSettings() {
 
 // ------------------------------------------------------------------ loading + polling
 // re-render only when it won't eat what someone is typing
-const busy = () => !$('#modal').classList.contains('hidden') || document.activeElement?.matches('input,textarea,select');
+// mouse held down = maybe starting a drag or a click: never redraw under it
+document.addEventListener('pointerdown', () => { S.pointerDown = true; }, true);
+document.addEventListener('pointerup', () => { S.pointerDown = false; }, true);
+document.addEventListener('dragend', () => { S.pointerDown = false; S.dragging = false; }, true);
+const busy = () => S.dragging || S.pointerDown || !$('#modal').classList.contains('hidden') || document.activeElement?.matches('input,textarea,select');
 // data that arrives while you're typing waits; it's drawn as soon as you click out (see focusout below)
 let pendingRender = false;
 function softRender(pages) { if (!pages.includes(S.page)) return; if (busy()) pendingRender = true; else render(); }
-document.addEventListener('focusout', () => setTimeout(() => { if (pendingRender && !busy()) { pendingRender = false; render(); } }, 50));
+// …unless focus is moving to a button/link: redrawing then would swallow that click (e.g. chat's send)
+document.addEventListener('focusout', e => {
+  if (e.relatedTarget?.closest?.('button, a, .chip, .card, [data-op]')) return;
+  setTimeout(() => { if (pendingRender && !busy()) { pendingRender = false; render(); } }, 50);
+});
+document.addEventListener('click', () => setTimeout(() => { if (pendingRender && !busy()) { pendingRender = false; render(); } }, 300));
 async function loadBoard(force) {
   const B = S.board;
   if (!studioReady() || (B.loading && !force)) return;

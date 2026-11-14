@@ -13,6 +13,8 @@ ME = {"login": "arthur", "avatar_url": "https://avatars.githubusercontent.com/u/
 now = lambda: time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
 issues, comments, labels, files, collabs, invites, releases, runs = {}, {}, {}, {}, {}, {}, {}, {}
 next_id = [1000]
+import threading
+LOCK = threading.Lock()
 
 
 def git(repo, *args):
@@ -50,6 +52,10 @@ class H(BaseHTTPRequestHandler):
     def do_DELETE(self): self.route("DELETE")
 
     def route(self, m):
+        with LOCK:  # one request at a time: like github, issue numbers never collide
+            return self.route2(m)
+
+    def route2(self, m):
         if self.path.startswith("/dl/"):  # release asset downloads (public, no auth)
             f = os.path.join(os.environ.get("FAKE_DL", "/nonexistent"), os.path.basename(self.path))
             if not os.path.isfile(f):

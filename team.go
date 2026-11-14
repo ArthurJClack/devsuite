@@ -187,6 +187,8 @@ func (s *Server) setupStudio(j *Job, studio, name string) error {
 		}
 		t.ChatIssue = is.Number
 	}
+	logMu.Lock() // logEvent may be making it at the same moment
+	defer logMu.Unlock()
 	if t.LogIssue == 0 {
 		j.Printf("starting the activity log…\n")
 		s.ensureLabel(studio, logLabel, "8b949e")
