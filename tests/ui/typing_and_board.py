@@ -17,12 +17,12 @@ with sync_playwright() as p:
     print('chat page enter works:', any('typed on chat page' in m['text'] for m in get('/api/chat')))
     pg.click('#nav a[data-page=board]'); pg.wait_for_timeout(1500)
     pg.click('[data-view=all]'); pg.wait_for_timeout(300)
-    q=pg.locator('[data-quick=todo]'); q.click(); pg.keyboard.type('quick card'); pg.keyboard.press('Enter'); pg.wait_for_timeout(2000)
+    q=pg.locator('[data-quick=planning]'); q.click(); pg.keyboard.type('quick card'); pg.keyboard.press('Enter'); pg.wait_for_timeout(2000)
     print('quick add:', any(c['title']=='quick card' for c in get('/api/board')))
     pg.wait_for_timeout(16000)  # let polls happen
     n=[c['number'] for c in get('/api/board') if c['title']=='quick card'][0]
     card=pg.locator(f'#page-board [data-card="{n}"]')
-    card.drag_to(pg.locator('#page-board .col[data-col=doing]')); pg.wait_for_timeout(2500)
+    card.drag_to(pg.locator('#page-board .col[data-col=implementation]')); pg.wait_for_timeout(2500)
     print('drag to doing:', [c['column'] for c in get('/api/board') if c['number']==n])
     pg.locator(f'#page-board [data-card="{n}"]').click(); pg.wait_for_timeout(1200)
     pg.locator('#csay').click(); pg.keyboard.type('comment typed'); pg.keyboard.press('Enter'); pg.wait_for_timeout(2000)

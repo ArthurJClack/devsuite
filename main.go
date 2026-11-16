@@ -52,6 +52,7 @@ func main() {
 	noBrowser := flag.Bool("no-browser", false, "don't open the browser")
 	showVer := flag.Bool("version", false, "print version")
 	afterUpdate := flag.Bool("after-update", false, "internal: relaunched by the updater")
+	inBrowser := flag.Bool("browser", false, "open in a normal browser tab instead of an app window")
 	flag.Parse()
 	if *showVer {
 		fmt.Println("hq", version)
@@ -76,12 +77,15 @@ func main() {
 		if resp, e := (&http.Client{Timeout: 2 * time.Second}).Do(req); e == nil && resp.StatusCode == 200 {
 			fmt.Println("hq is already running:", url)
 			if !*noBrowser {
-				_ = openURL(url)
+				if *inBrowser {
+					_ = openURL(url)
+				} else {
+					openApp(url)
+				}
 			}
 			return
 		}
-		fmt.Fprintln(os.Stderr, "can't listen on", addr, ":", err, "(try --port 7314)")
-		os.Exit(1)
+		fatal("hq can't start: port " + fmt.Sprint(*port) + " is taken by another program.\n\n" + err.Error())
 	}
 
 	st := loadStore()
@@ -94,8 +98,19 @@ func main() {
 	}
 
 	fmt.Printf("hq %s running at %s\nkeep this window open while you use it.\n", version, url)
-	if !*noBrowser && !*afterUpdate { // after an update the open tab just carries on
-		go func() { time.Sleep(300 * time.Millisecond); _ = openURL(url) }()
+	appWindow := *afterUpdate // after an update the open window just carries on
+	if !*noBrowser && !*afterUpdate {
+		time.AfterFunc(300*time.Millisecond, func() {
+			if *inBrowser {
+				_ = openURL(url)
+			} else if openApp(url) {
+				s.life.bye.Store(0)
+			}
+		})
+		appWindow = !*inBrowser
+	}
+	if appWindow && !*noBrowser {
+		go s.life.watch(func() bool { return s.jobs.Running() > 0 }, func() { os.Exit(0) })
 	}
 	srv := &http.Server{Handler: s.routes(), ReadHeaderTimeout: 10 * time.Second}
 	s.restart = func(exe string) {

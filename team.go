@@ -15,7 +15,26 @@ import (
 	"time"
 )
 
-var columns = []string{"backlog", "todo", "doing", "review", "done"}
+// the board is a pipeline: planning -> implementation -> qa -> release (ready to ship) -> shipped.
+// "shipped" = a closed issue; publishing a game from hq ships that game's release cards.
+var columns = []string{"planning", "implementation", "qa", "release", "shipped"}
+
+// older boards used other list names; they map onto the pipeline
+var legacyColumns = map[string]string{"backlog": "planning", "todo": "planning", "doing": "implementation",
+	"review": "qa", "done": "shipped", "ready": "release"}
+
+func normColumn(c string) string {
+	c = strings.ToLower(strings.TrimSpace(c))
+	if n, ok := legacyColumns[c]; ok {
+		return n
+	}
+	for _, k := range columns {
+		if k == c {
+			return c
+		}
+	}
+	return "planning"
+}
 
 const chatLabel = "hq:chat"
 
@@ -165,7 +184,7 @@ func (s *Server) setupStudio(j *Job, studio, name string) error {
 		t.Studio = name
 	}
 	j.Printf("making labels…\n")
-	colors := map[string]string{"backlog": "6e7681", "todo": "1f6feb", "doing": "d29922", "review": "a371f7", "done": "2ea043"}
+	colors := map[string]string{"planning": "6e7681", "implementation": "1f6feb", "qa": "d29922", "release": "a371f7", "shipped": "2ea043"}
 	for _, c := range columns {
 		s.ensureLabel(studio, "hq:"+c, colors[c])
 	}

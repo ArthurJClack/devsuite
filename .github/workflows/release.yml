@@ -28,6 +28,7 @@ jobs:
           node --check web/app.js
           tests/e2e.sh
           tests/update.sh
+          tests/life.sh
       - name: build
         run: |
           V="${{ github.event.release.tag_name || inputs.tag || github.ref_name }}"
@@ -39,7 +40,7 @@ jobs:
             --product-name "hq" --file-description "fish market studios hq" --company-name "fish market studios" \
             --copyright "fish market studios" --original-filename hq.exe --product-version "$N.0" --file-version "$N.0" \
             || echo "::warning::go-winres failed, building without version info"
-          GOOS=windows GOARCH=amd64 go build -ldflags "-X main.version=$V" -o dist/hq.exe .
+          GOOS=windows GOARCH=amd64 go build -ldflags "-X main.version=$V -H windowsgui" -o dist/hq.exe .
           GOOS=darwin  GOARCH=arm64 go build -ldflags "-X main.version=$V" -o dist/hq-macos .
           GOOS=linux   GOARCH=amd64 go build -ldflags "-X main.version=$V" -o dist/hq-linux .
           cp install.bat dist/

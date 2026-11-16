@@ -3,8 +3,10 @@
 package main
 
 import (
+	"os"
 	"os/exec"
 	"syscall"
+	"unsafe"
 )
 
 func hideWindow(c *exec.Cmd) {
@@ -30,3 +32,13 @@ func openURL(u string) error {
 }
 
 func scriptExts() []string { return []string{".bat", ".cmd"} }
+
+// fatal shows a message box (the app has no console) and exits.
+func fatal(msg string) {
+	user32 := syscall.NewLazyDLL("user32.dll")
+	box := user32.NewProc("MessageBoxW")
+	t, _ := syscall.UTF16PtrFromString(msg)
+	c, _ := syscall.UTF16PtrFromString("hq")
+	box.Call(0, uintptr(unsafe.Pointer(t)), uintptr(unsafe.Pointer(c)), 0x10)
+	os.Exit(1)
+}

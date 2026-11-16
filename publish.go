@@ -85,6 +85,13 @@ func (s *Server) startPublish(g Game, kind string) (*Job, error) {
 			s.logEvent("publish", g.ID, fmt.Sprintf("❌ %s of **%s** failed: %s", label, g.Name, firstLine(err.Error())))
 			return err
 		}
+		shipped := 0
+		if kind != "test" {
+			shipped = s.shipRelease(j, g, tag)
+		}
+		if shipped > 0 {
+			s.logEvent("card", g.ID, fmt.Sprintf("📦 %s shipped %s from the release list", g.Name, plural(shipped, "card")))
+		}
 		if kind != "test" {
 			s.logEvent("publish", g.ID, strings.Join(strings.Fields(fmt.Sprintf("🚀 published **%s** %s (%s)", g.Name, tag, kind)), " "))
 		}

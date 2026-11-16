@@ -3,6 +3,7 @@
 package main
 
 import (
+	"os"
 	"os/exec"
 	"runtime"
 )
@@ -36,3 +37,8 @@ func openPath(p string) error { return exec.Command(opener(), p).Start() }
 func openURL(u string) error  { return exec.Command(opener(), u).Start() }
 
 func scriptExts() []string { return []string{".sh", ".command"} }
+
+func fatal(msg string) {
+	println(msg)
+	os.Exit(1)
+}

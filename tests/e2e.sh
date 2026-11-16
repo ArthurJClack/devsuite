@@ -132,15 +132,15 @@ c -X POST http://127.0.0.1:7399/api/board -d '{"title":"tank pathing","game":"ma
 c -X PATCH http://127.0.0.1:7399/api/board/4 -d '{"column":"done"}' >/dev/null
 c http://127.0.0.1:7399/api/board | python3 -c '
 import json,sys;b=json.load(sys.stdin);cols={c["number"]:c["column"] for c in b}
-assert len(b)==4 and cols[4]=="done" and cols[3]=="todo" and cols[6]=="review", b
+assert len(b)==4 and cols[4]=="shipped" and cols[3]=="planning" and cols[6]=="qa", b
 print("✓ board: create + move (chat issue hidden)")'
 
 # board v2: priority, tags, due date, checklist, multiple assignees, comments, starter board
 c -X PATCH http://127.0.0.1:7399/api/board/3 -d '{"priority":"p0","tags":["bug","combat"],"due":"2026-12-01","body":"feels like ice\n\n- [x] repro\n- [ ] fix","assignees":["arthur","maya"]}' | python3 -c '
 import json,sys;c=json.load(sys.stdin)
-assert c["priority"]=="p0" and c["tags"]==["bug","combat"] and c["due"]=="2026-12-01" and (c["checkDone"],c["checkTotal"])==(1,2) and len(c["assignees"])==2 and "hq:due" not in c["body"] and c["column"]=="todo", c
+assert c["priority"]=="p0" and c["tags"]==["bug","combat"] and c["due"]=="2026-12-01" and (c["checkDone"],c["checkTotal"])==(1,2) and len(c["assignees"])==2 and "hq:due" not in c["body"] and c["column"]=="planning", c
 print("✓ card: priority, tags, due, checklist, assignees")'
-c -X PATCH http://127.0.0.1:7399/api/board/3 -d '{"column":"doing"}' | python3 -c 'import json,sys;c=json.load(sys.stdin);assert c["due"]=="2026-12-01" and c["priority"]=="p0" and c["column"]=="doing",c;print("✓ moving keeps the rest")'
+c -X PATCH http://127.0.0.1:7399/api/board/3 -d '{"column":"implementation"}' | python3 -c 'import json,sys;c=json.load(sys.stdin);assert c["due"]=="2026-12-01" and c["priority"]=="p0" and c["column"]=="implementation",c;print("✓ moving keeps the rest")'
 c -X POST http://127.0.0.1:7399/api/board/3/comments -d '{"text":"on it"}' >/dev/null
 c http://127.0.0.1:7399/api/board/3/comments | grep -q '"on it"' && ok "card comments"
 c http://127.0.0.1:7399/api/templates | grep -q '"secret"' && ok "secret starter board listed"
@@ -150,9 +150,16 @@ c http://127.0.0.1:7399/api/board | python3 -c '
 import json,sys;b=json.load(sys.stdin);s=[c for c in b if c["game"]=="secret"]
 assert len(s)==35+1, len(s)
 pick=[c for c in s if c["title"].startswith("pick the combat")][0]
-assert pick["column"]=="doing" and pick["priority"]=="p0" and pick["checkTotal"]==6, pick
-assert sum(1 for c in s if c["column"]=="done")>=7, [c["column"] for c in s]
+assert pick["column"]=="implementation" and pick["priority"]=="p0" and pick["checkTotal"]==6, pick
+assert sum(1 for c in s if c["column"]=="shipped")>=7, [c["column"] for c in s]
 print("✓ starter board imported once (no dupes on re-import)")'
+
+# pipeline: a card in "release" ships when the game is published
+c -X POST http://127.0.0.1:7399/api/board -d '{"title":"ship me","game":"secret","column":"release"}' > "$T/ship.json"
+SHIPN=$(python3 -c 'import json;print(json.load(open("'"$T"'/ship.json"))["number"])')
+c -X POST http://127.0.0.1:7399/api/game/secret/publish -d '{}' | wait_job | grep -q "shipped card #$SHIPN" && ok "publish shipped the release card"
+c http://127.0.0.1:7399/api/board | python3 -c 'import json,sys;c=[x for x in json.load(sys.stdin) if x["title"]=="ship me"][0];assert c["column"]=="shipped",c;print("✓ release → shipped after publish")'
+c -X PATCH http://127.0.0.1:7399/api/board/3 -d '{"column":"done"}' | python3 -c 'import json,sys;assert json.load(sys.stdin)["column"]=="shipped";print("✓ old list names still work")'
 
 # chat
 c -X POST http://127.0.0.1:7399/api/chat -d '{"text":"yo who broke the wrx"}' >/dev/null

@@ -226,7 +226,7 @@ function renderSignin() {
 function renderDash() {
   const p = $('#page-dash');
   const me = S.state.me?.login;
-  const mine = sortCards(S.board.cards.filter(c => c.column !== 'done' && c.assignees.some(a => a.login === me)));
+  const mine = sortCards(S.board.cards.filter(c => c.column !== 'shipped' && c.assignees.some(a => a.login === me)));
   p.innerHTML = `<div class="head"><h1>dashboard</h1><span class="grow"></span><button class="ice small" data-all="pull">⟳ update all games</button><button class="small" data-all="push">↑ push all</button><button class="ghost small" id="dRef">refresh</button></div>
     <div class="grid cols-4">${S.state.games.map(gameTile).join('')}</div>
     <div class="dash">
@@ -394,6 +394,8 @@ function editGames() {
 }
 
 // ---------- board
+const COL_LABEL = { planning: 'planning', implementation: 'implementation', qa: 'qa', release: 'release', shipped: 'shipped' };
+const COL_HINT = { planning: 'ideas + what\'s next', implementation: 'being built', qa: 'testing it', release: 'ready to ship', shipped: 'out in a build' };
 const PRIO = { p0: ['urgent', '#ff5d73'], p1: ['high', '#ff9f43'], p2: ['normal', '#ffcc66'], p3: ['low', '#6e8a7a'] };
 const TAGS = ['bug', 'feature', 'design', 'art', 'audio', 'writing', 'tech', 'tools', 'world', 'combat', 'ui', 'steam', 'research', 'blocked'];
 const tagColor = t => ({ bug: '#ff5d73', feature: '#59d499', art: '#ff9eb5', design: '#8fd3ff', audio: '#ffd166', writing: '#c9b6ff', tech: '#5fa8ff', tools: '#a78bfa', world: '#2dd4bf', combat: '#ff6b35', ui: '#f9c0a8', steam: '#9aa7b4', research: '#9fd8d8', blocked: '#ffffff' }[t] || '#7b8fa3');
@@ -418,8 +420,8 @@ function cardHTML(c) {
     <div class="t">${esc(c.title)}</div>
     <div class="m"><span class="chips">
       ${S.board.view === 'all' && g ? `<span class="tag c" style="--c:${esc(g.color)}">${esc(g.id)}</span>` : ''}
-      ${p && c.column !== 'done' ? `<span class="tag" style="color:${p[1]};border-color:${p[1]}55">${p[0]}</span>` : ''}
-      ${dueTag(c.due, c.column === 'done')}
+      ${p && c.column !== 'shipped' ? `<span class="tag" style="color:${p[1]};border-color:${p[1]}55">${p[0]}</span>` : ''}
+      ${dueTag(c.due, c.column === 'shipped')}
       ${c.checkTotal ? `<span class="tag ${c.checkDone === c.checkTotal ? 'ok' : ''}">☑ ${c.checkDone}/${c.checkTotal}</span>` : ''}
       ${c.comments ? `<span class="dim mono" style="font-size:11px">💬${c.comments}</span>` : ''}
       ${c.body && !c.checkTotal ? '<span class="dim" title="has details">≡</span>' : ''}
@@ -449,7 +451,7 @@ function renderBoard() {
   const keepFocus = document.activeElement?.id === 'bq';
   p.innerHTML = `<div class="head"><h1>board</h1>
       <span class="chips boards">${[['all', 'everything', '#8fd3ff'], ...S.state.games.map(g => [g.id, g.name, g.color])].map(([id, name, col]) =>
-        `<span class="tag chip ${B.view === id ? 'on' : ''}" data-view="${esc(id)}" style="--c:${esc(col)}">${esc(name.toLowerCase())} <b class="dim">${id === 'all' ? B.cards.filter(c => c.column !== 'done').length : B.cards.filter(c => c.game === id && c.column !== 'done').length}</b></span>`).join('')}</span>
+        `<span class="tag chip ${B.view === id ? 'on' : ''}" data-view="${esc(id)}" style="--c:${esc(col)}">${esc(name.toLowerCase())} <b class="dim">${id === 'all' ? B.cards.filter(c => c.column !== 'shipped').length : B.cards.filter(c => c.game === id && c.column !== 'shipped').length}</b></span>`).join('')}</span>
       <span class="grow"></span><button class="pri small" id="bNew">+ card</button></div>
     <div class="head filters">
       <input id="bq" placeholder="search cards…" value="${esc(B.q)}" style="max-width:220px">
@@ -463,14 +465,15 @@ function renderBoard() {
     ${tpl && onBoard < 5 && B.loaded ? `<div class="notice" style="margin-bottom:12px"><div class="grow"><b>${esc(viewGame.name)} board is empty.</b> <span class="dim">load the starter board: ${tpl.cards} cards from the game's docs (status, design plans, known issues).</span></div><button class="pri" id="bTpl">load starter board</button></div>` : ''}
     ${!B.loaded && !B.error ? '<div class="empty">loading the board…</div>' : `<div class="board">${S.state.columns.map(col => {
       let list = sortCards(cards.filter(c => c.column === col));
-      const total = list.length, cap = col === 'done' && !B.allDone ? 12 : 1e9;
+      const total = list.length, cap = col === 'shipped' && !B.allDone ? 12 : 1e9;
       list = list.slice(0, cap);
-      return `<div class="col" data-col="${col}"><header><span>${col}</span><span class="dim mono">${total}</span></header>${list.map(cardHTML).join('')}
+      const shipNote = col === 'release' && viewGame?.publishKinds?.length ? `<div class="colnote">ships when you publish ${esc(viewGame.name)}</div>` : '';
+      return `<div class="col col-${col}" data-col="${col}"><header><span>${COL_LABEL[col] || col}</span><span class="dim mono">${total}</span></header><div class="colnote">${COL_HINT[col] || ''}</div>${shipNote}${list.map(cardHTML).join('')}
         ${total > list.length ? `<button class="ghost small" id="bMoreDone" style="width:100%">show ${total - list.length} more</button>` : ''}
-        ${col !== 'done' ? `<div class="quick"><input data-quick="${col}" placeholder="+ add a card"></div>` : ''}</div>`;
+        ${col !== 'shipped' ? `<div class="quick"><input data-quick="${col}" placeholder="+ add a card"></div>` : ''}</div>`;
     }).join('')}</div>`}`;
   $$('[data-view]', p).forEach(c => c.onclick = () => { B.view = c.dataset.view; localStorage.setItem('hqBoard', B.view); renderBoard(); });
-  $('#bNew').onclick = () => cardModal(null, 'todo');
+  $('#bNew').onclick = () => cardModal(null, 'planning');
   const bq = $('#bq'); bq.oninput = () => { B.q = bq.value; renderBoard(); };
   if (keepFocus) { bq.focus(); bq.setSelectionRange(bq.value.length, bq.value.length); }
   $('#bMine').onclick = () => { B.mine = !B.mine; renderBoard(); };
@@ -891,6 +894,9 @@ async function refresh(all) {
   }
   if (!busy()) render();
 }
+
+// closing the window lets hq quit (a reload says bye and comes straight back, so it stays)
+addEventListener('pagehide', () => { try { navigator.sendBeacon('/api/bye?k=' + KEY); } catch (e) { } });
 
 (async () => {
   if (!KEY) { document.body.innerHTML = '<div class="signin panel"><h1>open hq from the app</h1><p class="dim">double-click hq. it opens this page with its key.</p></div>'; return; }

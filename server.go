@@ -25,6 +25,7 @@ type Server struct {
 	teamAt time.Time
 
 	upd     *Updater
+	life    life
 	syncs   *Syncs
 	restart func(exe string)
 
@@ -67,6 +68,7 @@ func (s *Server) routes() http.Handler {
 				http.Error(w, "bad key: reopen hq", http.StatusForbidden)
 				return
 			}
+			s.life.touch()
 			out, err := fn(w, r)
 			if out == nil && err == nil {
 				return // handler wrote the response
@@ -86,6 +88,10 @@ func (s *Server) routes() http.Handler {
 	}
 
 	h("GET /api/ping", func(w http.ResponseWriter, r *http.Request) (any, error) { return "pong", nil })
+	h("POST /api/bye", func(w http.ResponseWriter, r *http.Request) (any, error) {
+		s.life.bye.Store(time.Now().UnixMilli() + 1) // after this request's own touch
+		return ok(), nil
+	})
 	h("GET /api/state", s.apiState)
 	h("POST /api/signin", s.apiSignin)
 	h("POST /api/signout", func(w http.ResponseWriter, r *http.Request) (any, error) {

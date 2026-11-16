@@ -87,7 +87,7 @@ func isMeta(label string) bool {
 }
 
 func toCard(is ghIssue) Card {
-	c := Card{Number: is.Number, Title: is.Title, Column: "todo", Assignees: is.Assignees, Tags: []string{},
+	c := Card{Number: is.Number, Title: is.Title, Column: "planning", Assignees: is.Assignees, Tags: []string{},
 		Author: is.User.Login, URL: is.HTMLURL, Comments: is.Comments, Updated: is.UpdatedAt, Created: is.CreatedAt}
 	if c.Assignees == nil {
 		c.Assignees = []ghUser{}
@@ -95,7 +95,9 @@ func toCard(is ghIssue) Card {
 	for _, l := range is.Labels {
 		switch {
 		case strings.HasPrefix(l.Name, "hq:"):
-			c.Column = strings.TrimPrefix(l.Name, "hq:")
+			if n := strings.TrimPrefix(l.Name, "hq:"); n != "deleted" {
+				c.Column = normColumn(n)
+			}
 		case strings.HasPrefix(l.Name, "game:"):
 			c.Game = strings.TrimPrefix(l.Name, "game:")
 		case strings.HasPrefix(l.Name, "prio:"):
@@ -105,7 +107,7 @@ func toCard(is ghIssue) Card {
 		}
 	}
 	if is.State == "closed" {
-		c.Column = "done"
+		c.Column = "shipped"
 	}
 	body := strings.ReplaceAll(is.Body, "\r\n", "\n")
 	if m := dueRe.FindStringSubmatch(body); m != nil {
@@ -200,7 +202,7 @@ func (s *Server) editCard(num int, e CardEdit) (Card, error) {
 	cur := toCard(is)
 	col, game, prio, tags, due, body := cur.Column, cur.Game, cur.Priority, cur.Tags, cur.Due, cur.Body
 	if e.Column != nil {
-		col = *e.Column
+		col = normColumn(*e.Column)
 	}
 	if e.Game != nil {
 		game = *e.Game
@@ -236,7 +238,7 @@ func (s *Server) editCard(num int, e CardEdit) (Card, error) {
 			addL(t)
 		}
 	}
-	if col != "done" {
+	if col != "shipped" {
 		addL("hq:" + col)
 	}
 	if game != "" {
@@ -269,7 +271,7 @@ func (s *Server) editCard(num int, e CardEdit) (Card, error) {
 		if _, err := s.gh.Do("POST", "/repos/"+studio+"/issues", out, &created); err != nil {
 			return Card{}, err
 		}
-		if col == "done" { // new issues are always open: close it to land in done
+		if col == "shipped" { // new issues are always open: close it to land in shipped
 			if _, err := s.gh.Do("PATCH", fmt.Sprintf("/repos/%s/issues/%d", studio, created.Number), map[string]any{"state": "closed"}, &created); err != nil {
 				return Card{}, err
 			}
@@ -280,7 +282,7 @@ func (s *Server) editCard(num int, e CardEdit) (Card, error) {
 	case e.Delete:
 		out["state"], out["state_reason"] = "closed", "not_planned"
 		out["labels"] = append(labels, "hq:deleted")
-	case col == "done":
+	case col == "shipped":
 		out["state"] = "closed"
 	default:
 		out["state"] = "open"
@@ -290,6 +292,33 @@ func (s *Server) editCard(num int, e CardEdit) (Card, error) {
 		return Card{}, err
 	}
 	return toCard(updated), nil
+}
+
+// shipRelease closes a game's "release" cards after a publish: they're in the build now.
+func (s *Server) shipRelease(j *Job, g Game, tag string) int {
+	cards, err := s.board()
+	if err != nil {
+		return 0
+	}
+	studio := s.store.Get().Studio
+	note := "🚀 shipped"
+	if tag != "" {
+		note += " in " + tag
+	}
+	n := 0
+	for _, c := range cards {
+		if c.Game != g.ID || c.Column != "release" {
+			continue
+		}
+		col := "shipped"
+		if _, err := s.editCard(c.Number, CardEdit{Column: &col}); err != nil {
+			continue
+		}
+		_, _ = s.gh.Do("POST", fmt.Sprintf("/repos/%s/issues/%d/comments", studio, c.Number), map[string]string{"body": note + " (hq)"}, nil)
+		j.Printf("  shipped card #%d %s\n", c.Number, c.Title)
+		n++
+	}
+	return n
 }
 
 // ---------------------------------------------------------------- card comments
@@ -368,7 +397,7 @@ func (s *Server) importTemplate(j *Job, game string) error {
 			j.Printf("· already there: %s\n", tc.Title)
 			continue
 		}
-		title, body, col, prio, g := tc.Title, tc.Body, tc.Column, tc.Priority, game
+		title, body, col, prio, g := tc.Title, tc.Body, normColumn(tc.Column), tc.Priority, game
 		tags := tc.Tags
 		if tags == nil {
 			tags = []string{}

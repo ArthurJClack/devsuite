@@ -11,7 +11,7 @@ works with every game we have in dev: **SECRET** (rpg), **FOR/AGAINST** (rts), *
 | dashboard | every game at a glance: latest build + downloads, how much of dev isn't on main yet, open PRs, where you are locally. recent work feed, your cards, mini chat |
 | games | **⟳ update / ↑ push** per game or **update all / push all** at once, each with live status (what came in, what went out, history). a quiet `git fetch` every 5 minutes keeps "N new on dev" honest. **🚀 publish** an update, hotfix or test build: starts the game's github release workflow and shows every step until the release is out (or runs its publish script with live output). **▶ play dev**: runs the latest dev from github in its own copy (`.dev/<game>`), even if you haven't downloaded the game, without touching your work. download the source, **pull dev**, **push to dev**, **dev → main**, open in godot, play, open the folder, run any of the game's tools (`*.bat` in the root and `tools/`), publish an update or hotfix |
 | changes | everything that happened across the studio, newest first, grouped by day: every commit on dev (or main) in every game, every release with its patch notes, and a shared **activity log** of what people did in hq (cards made/moved/edited, comments, merges to main, publishes, pushes, invites, games list edits). click a commit for its message and files. filter by game, type, person, search. the activity log is one issue in the studio repo, so it's permanent and visible on github too |
-| board | trello-style: a board per game (or everything), lists backlog / todo / doing / review / done, drag cards between them, quick-add, priorities, colored tags, due dates (overdue goes red), checklists with progress, several people per card, comments, search + filters. each game can ship a starter board (`templates/<game>.json`, SECRET's comes from its docs) |
+| board | the studio's project pipeline: a board per game (or everything), cards move **planning → implementation → qa → release → shipped**. publishing a game from hq ships its release cards (closes them with a "shipped in vX" note). trello-style: drag cards between them, quick-add, priorities, colored tags, due dates (overdue goes red), checklists with progress, several people per card, comments, search + filters. each game can ship a starter board (`templates/<game>.json`, SECRET's comes from its docs) |
 | chat | small team chat. pushes and merges post in it automatically |
 | team | add someone as a collaborator to any of the repos, see who has access / pending invites, and **make their package**: a zip with hq + the studio settings. they unzip, double-click, sign in, done |
 | settings | where games download to, godot path, which studio repo, sign out |
@@ -24,6 +24,10 @@ works with every game we have in dev: **SECRET** (rpg), **FOR/AGAINST** (rts), *
 - **the studio repo** (private, e.g. `ArthurJClack/fishmarket-hq`) holds `hq.json` (the shared games list), the board (its issues, labelled `hq:todo` etc + `game:<id>`) and the chat (comments on one pinned issue). everyone who has access sees the same thing. it all still works straight from github.com too.
 - polling is cheap: github answers unchanged data with a 304 that doesn't count against the rate limit.
 - the page only answers on `127.0.0.1`, and only with the key hq opens it with.
+
+## the app
+
+hq opens in its own window (edge or chrome app mode, no tabs or address bar, its own taskbar icon) and quits a few seconds after you close it, unless something is still running. `--browser` uses a normal tab instead. the windows build has no console window; errors show as a message box.
 
 ## install
 
