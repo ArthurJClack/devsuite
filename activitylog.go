@@ -75,7 +75,7 @@ func (s *Server) readLog() ([]Change, error) {
 		return nil, err
 	}
 	last := max(1, (is.Comments+99)/100)
-	var out []Change
+	out := []Change{}
 	for p := max(1, last-1); p <= last; p++ {
 		var cs []ghComment
 		if _, err := s.gh.Do("GET", fmt.Sprintf("/repos/%s/issues/%d/comments?per_page=100&page=%d", studio, t.LogIssue, p), nil, &cs); err != nil {

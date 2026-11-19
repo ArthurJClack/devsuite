@@ -136,7 +136,7 @@ func firstLine(s string) string {
 // syncAll starts op on every downloaded game (push only where there's something to send).
 func (s *Server) syncAll(op, msg string) []map[string]string {
 	l := s.store.Get()
-	var out []map[string]string
+	out := []map[string]string{}
 	for _, g := range s.team().Games {
 		row := map[string]string{"game": g.ID, "name": g.Name}
 		st := localStatus(l.Workspace, g)

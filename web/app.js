@@ -217,7 +217,7 @@ $('#jobsBtn').onclick = async () => {
   if ($('#conLog').textContent.trim()) return; // showing a job already
   $('#conTitle').textContent = 'console'; $('#conState').textContent = 'recent jobs';
   try {
-    const list = await api('/api/jobs');
+    const list = (await api('/api/jobs')) || [];
     $('#conLog').innerHTML = list.length ? list.map(j => `<a class="jobrow" data-job="${esc(j.id)}">${j.done ? (j.ok ? '✓' : '✗') : '⟳'} ${esc(j.title)} <span class="dim">${ago(j.started)}</span></a>`).join('')
       : '<span class="dim">nothing has run yet. pushes, pulls, downloads and publishes show their output here.</span>';
     $$('[data-job]', $('#conLog')).forEach(a => a.onclick = () => showJob(a.dataset.job));
@@ -514,7 +514,8 @@ function renderBoard() {
       <span class="grow"></span>
       ${B.error ? `<span class="tag bad">${esc(B.error)}</span> <button class="small" id="bRetry">retry</button>` : B.loading ? '<span class="dim">syncing…</span>' : `<span class="dim" style="font-size:12px">synced ${B.at ? ago(B.at) : ''}</span>`}
     </div>
-    ${B.loaded && !B.cards.length ? (() => {
+    ${B.loaded && !B.cards.length && S.seeding ? '<div class="notice" style="margin-bottom:12px"><div class="grow"><b>setting up the board…</b> <span class="dim">adding starter cards for every game from their docs. they show up here as they land (about two minutes).</span></div></div>' : ''}
+    ${B.loaded && !B.cards.length && !S.seeding ? (() => {
       const avail = S.state.games.filter(g => S.templates[g.id]);
       const n = avail.reduce((a, g) => a + S.templates[g.id].cards, 0);
       return avail.length ? `<div class="notice" style="margin-bottom:12px"><div class="grow"><b>the board is empty.</b> <span class="dim">load the starter boards: ${n} cards for ${avail.map(g => esc(g.name)).join(', ')}, made from each game's own docs (backlogs, audits, plans, status). you can edit or delete any of them.</span></div><button class="pri" id="bTplAll">load starter boards</button></div>` : '';
@@ -680,8 +681,8 @@ async function loadChanges(reset) {
   try {
     const qs = new URLSearchParams({ page: CH.page, branch: CH.branch, game: CH.game });
     const [r, lg] = await Promise.all([api('/api/changes?' + qs), reset ? api('/api/log').catch(() => []) : Promise.resolve(null)]);
-    CH.items = CH.items.concat(r.changes); CH.more = r.more; CH.errors = r.errors || [];
-    if (lg) CH.log = lg;
+    CH.items = CH.items.concat(r.changes || []); CH.more = r.more; CH.errors = r.errors || [];
+    if (lg) CH.log = lg || [];
     CH.loaded = true;
   } catch (e) { CH.errors = [e.message]; }
   CH.loading = false;
@@ -907,6 +908,18 @@ document.addEventListener('pointerdown', () => { S.pointerDown = true; }, true);
 document.addEventListener('pointerup', () => { S.pointerDown = false; }, true);
 document.addEventListener('dragend', () => { S.pointerDown = false; S.dragging = false; }, true);
 const busy = () => S.dragging || S.pointerDown || !$('#modal').classList.contains('hidden') || document.activeElement?.matches('input,textarea,select');
+// an empty board that was never set up gets every game's starter cards on its own (once per
+// studio: deleting them all later doesn't bring them back)
+async function autoSeed() {
+  const B = S.board;
+  if (B.cards.length || S.state?.seeded || S.seeding || !studioReady()) return;
+  S.seeding = true;
+  try {
+    const r = await api('/api/board/seed', { body: {} });
+    if (r.id) { toast('setting up the board with starter cards for every game…'); runJob(Promise.resolve(r), () => loadBoard(true)); }
+  } catch (e) { /* already seeded by a teammate, or no access: the manual button still works */ }
+}
+
 // data that arrives while you're typing waits; it's drawn as soon as you click out (see focusout below)
 let pendingRender = false;
 function softRender(pages) { if (!pages.includes(S.page)) return; if (busy()) pendingRender = true; else render(); }
@@ -921,7 +934,8 @@ async function loadBoard(force) {
   if (!studioReady() || (B.loading && !force)) return;
   B.loading = true;
   try {
-    B.cards = await api('/api/board'); B.loaded = true; B.error = ''; B.at = Date.now();
+    B.cards = (await api('/api/board')) || []; B.loaded = true; B.error = ''; B.at = Date.now();
+    autoSeed();
   } catch (e) {
     B.error = 'board: ' + e.message; // keep showing the last good cards
   } finally { B.loading = false; }
@@ -930,7 +944,7 @@ async function loadBoard(force) {
 async function loadTeam() { try { S.team = await api('/api/team'); if (S.page === 'team') renderTeam(); } catch (e) { fail(e); } }
 async function loadChat() {
   if (!studioReady()) return;
-  let msgs; try { msgs = await api('/api/chat'); S.chatError = ''; } catch (e) { S.chatError = e.message; return; }
+  let msgs; try { msgs = (await api('/api/chat')) || []; S.chatError = ''; } catch (e) { S.chatError = e.message; return; }
   const first = !S.chatLoaded; S.chatLoaded = true;
   if (first) { S.chat = msgs; softRender(['chat', 'dash']); return; }
   const changed = msgs.length !== S.chat.length || msgs.at(-1)?.id !== S.chat.at(-1)?.id;
@@ -945,7 +959,7 @@ async function loadChat() {
 async function loadRemote() {
   try {
     const [r, a] = await Promise.all([api('/api/remote'), api('/api/activity')]);
-    S.remote = r; S.activity = a; S.remoteLoaded = true; S.remoteAt = Date.now();
+    S.remote = r || []; S.activity = a || []; S.remoteLoaded = true; S.remoteAt = Date.now();
     softRender(['dash']);
   } catch (e) { S.remoteLoaded = true; }
 }

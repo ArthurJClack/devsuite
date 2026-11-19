@@ -59,6 +59,7 @@ type Team struct {
 	Repo      string `json:"repo,omitempty"` // studio repo: board + chat live in its issues
 	ChatIssue int    `json:"chatIssue,omitempty"`
 	LogIssue  int    `json:"logIssue,omitempty"`
+	Seeded    bool   `json:"seeded,omitempty"` // starter boards were loaded once (never again, even if emptied)
 	Games     []Game `json:"games"`
 }
 

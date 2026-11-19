@@ -327,7 +327,7 @@ func (s *Server) members() ([]Member, []string) {
 	}
 	var mu sync.Mutex
 	var wg sync.WaitGroup
-	var errs []string
+	errs := []string{}
 	for id, repo := range s.teamRepos() {
 		wg.Add(1)
 		go func(id, repo string) {

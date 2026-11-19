@@ -11,7 +11,7 @@ import (
 
 // discoverTools: the game's own listed tools, then every script in the root and tools/ folders.
 func discoverTools(dir string, g Game) []Tool {
-	var out []Tool
+	out := []Tool{}
 	seen := map[string]bool{}
 	add := func(t Tool) {
 		p := strings.Fields(t.Path)

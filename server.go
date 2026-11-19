@@ -250,6 +250,25 @@ func (s *Server) routes() http.Handler {
 		}
 		return out, nil
 	})
+	// first time anyone opens an empty board: load every game's starter board, once per studio
+	h("POST /api/board/seed", func(w http.ResponseWriter, r *http.Request) (any, error) {
+		t := s.team()
+		if t.Seeded {
+			return nil, fmt.Errorf("the starter boards were already loaded once")
+		}
+		cards, err := s.board()
+		if err != nil {
+			return nil, err
+		}
+		t.Seeded = true
+		if err := s.saveTeam(t, "hq: starter boards loaded"); err != nil {
+			return nil, err
+		}
+		if len(cards) > 0 {
+			return map[string]bool{"skipped": true}, nil
+		}
+		return s.jobs.Start("setting up the board · starter cards for every game", "", nil, func(j *Job) error { return s.importTemplate(j, "all") }), nil
+	})
 	h("POST /api/board/import", func(w http.ResponseWriter, r *http.Request) (any, error) {
 		var in struct{ Game string }
 		if err := readJSON(r, &in); err != nil {
@@ -337,7 +356,7 @@ func (s *Server) apiState(w http.ResponseWriter, r *http.Request) (any, error) {
 	l := s.store.Get()
 	t := s.team()
 	out := map[string]any{
-		"studio": t.Studio, "studioRepo": l.Studio, "chatIssue": t.ChatIssue, "workspace": l.Workspace,
+		"studio": t.Studio, "studioRepo": l.Studio, "chatIssue": t.ChatIssue, "seeded": t.Seeded, "workspace": l.Workspace,
 		"godot": findGodot(l.Godot), "godotSaved": l.Godot, "signedIn": false, "columns": columns,
 		"gitOK": hasGit(), "version": version, "update": s.upd.Info(), "logPath": filepath.Join(configDir(), "hq.log"), "sync": s.syncs.Snapshot(), "autoUpdate": !l.NoAutoUpdate, "tokenFrom": map[bool]string{true: "pasted", false: "github cli"}[l.Token != ""],
 	}
@@ -675,7 +694,7 @@ func (s *Server) apiRemote(w http.ResponseWriter, r *http.Request) (any, error) 
 
 func (s *Server) apiActivity(w http.ResponseWriter, r *http.Request) (any, error) {
 	var mu sync.Mutex
-	var all []Activity
+	all := []Activity{}
 	var wg sync.WaitGroup
 	for _, g := range s.team().Games {
 		wg.Add(1)

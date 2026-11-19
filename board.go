@@ -137,7 +137,7 @@ func (s *Server) board() ([]Card, error) {
 	if studio == "" {
 		return nil, fmt.Errorf("no studio repo yet")
 	}
-	var cards []Card
+	cards := []Card{} // never null: an empty board is [] (null used to crash the board page)
 	add := func(list []ghIssue) {
 		for _, is := range list {
 			if is.PR != nil || hasLabel(is, chatLabel) || hasLabel(is, logLabel) || hasLabel(is, "hq:deleted") {

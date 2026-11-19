@@ -43,8 +43,8 @@ func (s *Server) apiChanges(w http.ResponseWriter, r *http.Request) (any, error)
 		}
 	}
 	var mu sync.Mutex
-	var out []Change
-	var errs []string
+	out := []Change{}
+	errs := []string{}
 	var wg sync.WaitGroup
 	for _, g := range games {
 		wg.Add(1)
