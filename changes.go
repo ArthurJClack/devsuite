@@ -50,6 +50,7 @@ func (s *Server) apiChanges(w http.ResponseWriter, r *http.Request) (any, error)
 		wg.Add(1)
 		go func(g Game) {
 			defer wg.Done()
+			defer recoverLog("changes.go")
 			b := branch
 			if b == "" || b == "dev" {
 				b = g.devBranch()

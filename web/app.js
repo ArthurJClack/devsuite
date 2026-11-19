@@ -11,12 +11,44 @@ const $ = (s, el = document) => el.querySelector(s);
 const $$ = (s, el = document) => [...el.querySelectorAll(s)];
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
+// can't reach hq (it's restarting after an update, or it was closed): one calm banner that
+// retries on its own, instead of a "failed to fetch" toast on every poll
+const NET = { down: false };
+function hqDown() {
+  if (NET.down) return;
+  NET.down = true;
+  let el = document.getElementById('offline');
+  if (!el) { el = document.createElement('div'); el.id = 'offline'; document.body.appendChild(el); }
+  el.innerHTML = '<b>can\'t reach hq</b><span>it may be restarting after an update. trying again… if it doesn\'t come back, open hq from the start menu.</span>';
+  el.className = 'on';
+  (async function retry() {
+    for (;;) {
+      await new Promise(r => setTimeout(r, 2000));
+      try { const r = await fetch('/api/ping', { headers: { 'X-HQ-Key': KEY } }); if (r.ok) break; } catch (e) { }
+    }
+    NET.down = false; el.className = ''; connectLive(); refresh(true);
+  })();
+}
+function connectLive() {
+  try {
+    if (NET.live) NET.live.close();
+    NET.live = new EventSource('/api/live?k=' + KEY);
+    NET.live.onerror = () => { NET.live.close(); fetch('/api/ping', { headers: { 'X-HQ-Key': KEY } }).catch(hqDown); setTimeout(() => { if (!NET.down) connectLive(); }, 3000); };
+  } catch (e) { }
+}
+
 async function api(path, opts = {}) {
-  const r = await fetch(path, {
-    method: opts.method || (opts.body ? 'POST' : 'GET'),
-    headers: { 'X-HQ-Key': KEY, 'Content-Type': 'application/json' },
-    body: opts.body ? JSON.stringify(opts.body) : undefined,
-  });
+  let r;
+  try {
+    r = await fetch(path, {
+      method: opts.method || (opts.body ? 'POST' : 'GET'),
+      headers: { 'X-HQ-Key': KEY, 'Content-Type': 'application/json' },
+      body: opts.body ? JSON.stringify(opts.body) : undefined,
+    });
+  } catch (e) {
+    hqDown();
+    throw new Error('can\'t reach hq right now');
+  }
   const data = await r.json().catch(() => ({}));
   if (!r.ok) throw new Error(data.error || r.statusText);
   return data;
@@ -27,7 +59,7 @@ function toast(msg, bad) {
   t.textContent = msg; t.className = 'on' + (bad ? ' bad' : '');
   clearTimeout(toast.t); toast.t = setTimeout(() => t.className = '', bad ? 5000 : 2500);
 }
-const fail = e => toast(e.message || String(e), true);
+const fail = e => { if (!NET.down) toast(e.message || String(e), true); };
 
 function ago(d) {
   const s = (Date.now() - new Date(d)) / 1000;
@@ -895,11 +927,10 @@ async function refresh(all) {
   if (!busy()) render();
 }
 
-// closing the window lets hq quit (a reload says bye and comes straight back, so it stays)
-addEventListener('pagehide', () => { try { navigator.sendBeacon('/api/bye?k=' + KEY); } catch (e) { } });
 
 (async () => {
   if (!KEY) { document.body.innerHTML = '<div class="signin panel"><h1>open hq from the app</h1><p class="dim">double-click hq. it opens this page with its key.</p></div>'; return; }
+  connectLive(); // keeps hq running while this window is open
   await refresh(true);
   show(S.state?.signedIn ? (localStorage.getItem('hqPage') || 'dash') : 'dash');
   setInterval(() => S.state?.signedIn && loadChat(), 5000);

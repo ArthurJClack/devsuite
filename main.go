@@ -61,6 +61,7 @@ func main() {
 
 	go cleanupOld()
 
+	setupLog()
 	key := loadKey()
 	addr := fmt.Sprintf("127.0.0.1:%d", *port)
 	url := fmt.Sprintf("http://%s/#k=%s", addr, key)
@@ -103,8 +104,8 @@ func main() {
 		time.AfterFunc(300*time.Millisecond, func() {
 			if *inBrowser {
 				_ = openURL(url)
-			} else if openApp(url) {
-				s.life.bye.Store(0)
+			} else {
+				openApp(url)
 			}
 		})
 		appWindow = !*inBrowser
@@ -120,8 +121,10 @@ func main() {
 		}
 		os.Exit(0)
 	}
-	go s.fetchLoop()
-	go s.upd.loop(func() bool { return !s.store.Get().NoAutoUpdate }, func() bool { return s.jobs.Running() == 0 }, s.restart)
+	goSafe("fetch loop", s.fetchLoop)
+	goSafe("update loop", func() {
+		s.upd.loop(func() bool { return !s.store.Get().NoAutoUpdate }, func() bool { return s.jobs.Running() == 0 }, s.restart)
+	})
 	if err := srv.Serve(ln); err != nil && err != http.ErrServerClosed {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)

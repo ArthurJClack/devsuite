@@ -88,9 +88,32 @@ func (s *Server) routes() http.Handler {
 	}
 
 	h("GET /api/ping", func(w http.ResponseWriter, r *http.Request) (any, error) { return "pong", nil })
-	h("POST /api/bye", func(w http.ResponseWriter, r *http.Request) (any, error) {
-		s.life.bye.Store(time.Now().UnixMilli() + 1) // after this request's own touch
-		return ok(), nil
+	h("POST /api/bye", func(w http.ResponseWriter, r *http.Request) (any, error) { return ok(), nil }) // old pages
+	// a window's lifeline: open while the page is open (see window.go)
+	h("GET /api/live", func(w http.ResponseWriter, r *http.Request) (any, error) {
+		fl, okf := w.(http.Flusher)
+		if !okf {
+			return nil, fmt.Errorf("no streaming")
+		}
+		w.Header().Set("Content-Type", "text/event-stream")
+		w.WriteHeader(200)
+		s.life.open()
+		defer s.life.close()
+		fmt.Fprintf(w, "event: hello\ndata: %s\n\n", version)
+		fl.Flush()
+		t := time.NewTicker(15 * time.Second)
+		defer t.Stop()
+		for {
+			select {
+			case <-r.Context().Done():
+				return nil, nil
+			case <-t.C:
+				if _, err := fmt.Fprint(w, ": beat\n\n"); err != nil {
+					return nil, nil
+				}
+				fl.Flush()
+			}
+		}
 	})
 	h("GET /api/state", s.apiState)
 	h("POST /api/signin", s.apiSignin)
@@ -144,11 +167,11 @@ func (s *Server) routes() http.Handler {
 			return nil, fmt.Errorf("no update available")
 		}
 		// answer first, then download + restart; the page reconnects on its own
-		go func() {
+		goSafe("update apply", func() {
 			if err := s.upd.Apply(s.restart); err != nil {
 				fmt.Fprintln(os.Stderr, "update failed:", err)
 			}
-		}()
+		})
 		return ok(), nil
 	})
 	h("GET /api/remote", s.apiRemote)
@@ -332,6 +355,7 @@ func (s *Server) apiState(w http.ResponseWriter, r *http.Request) (any, error) {
 		wg.Add(1)
 		go func(i int, g Game) {
 			defer wg.Done()
+			defer recoverLog("server.go")
 			games[i] = gs{g, localStatus(l.Workspace, g), publishKinds(g)}
 		}(i, g)
 	}
@@ -612,6 +636,7 @@ func (s *Server) apiRemote(w http.ResponseWriter, r *http.Request) (any, error) 
 		wg.Add(1)
 		go func(i int, g Game) {
 			defer wg.Done()
+			defer recoverLog("server.go")
 			rm := Remote{ID: g.ID}
 			var rels []ghRelease
 			if _, err := s.gh.Do("GET", "/repos/"+orDefault(g.Releases, g.Repo)+"/releases?per_page=30", nil, &rels); err == nil && len(rels) > 0 {
@@ -654,6 +679,7 @@ func (s *Server) apiActivity(w http.ResponseWriter, r *http.Request) (any, error
 		wg.Add(1)
 		go func(g Game) {
 			defer wg.Done()
+			defer recoverLog("server.go")
 			var cs []ghCommit
 			if _, err := s.gh.Do("GET", "/repos/"+g.Repo+"/commits?per_page=10&sha="+esc(g.devBranch()), nil, &cs); err != nil {
 				return

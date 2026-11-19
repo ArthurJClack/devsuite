@@ -58,23 +58,33 @@ func openApp(url string) bool {
 
 // ---------------------------------------------------------------- quit when the window goes away
 
+// each open hq window holds a /api/live stream. when the last one has been gone for 20 s (a
+// reload reconnects in under a second) and nothing is running, hq quits. no idle timeout: a
+// minimized or sleeping window keeps its stream, so hq never vanishes under an open window.
 type life struct {
-	seen atomic.Int64 // unix ms of the last api request from the page
-	bye  atomic.Int64 // unix ms the page said goodbye (window closing or reloading)
+	live   atomic.Int64 // open window streams
+	ever   atomic.Bool  // a window has connected at least once
+	goneAt atomic.Int64 // unix ms the last stream closed
+	seen   atomic.Int64 // last api request (kept for the log)
 }
 
 func (l *life) touch() { l.seen.Store(time.Now().UnixMilli()) }
 
-// watch exits hq once the window has been gone a little while (a reload says bye, then pings
-// again within a second) and nothing is running. 4 quiet minutes count as gone too.
+func (l *life) open() { l.live.Add(1); l.ever.Store(true) }
+
+func (l *life) close() {
+	if l.live.Add(-1) <= 0 {
+		l.goneAt.Store(time.Now().UnixMilli())
+	}
+}
+
 func (l *life) watch(busy func() bool, quit func()) {
-	for range time.Tick(3 * time.Second) {
-		now := time.Now().UnixMilli()
-		seen, bye := l.seen.Load(), l.bye.Load()
-		if seen == 0 || busy() {
+	for range time.Tick(2 * time.Second) {
+		if !l.ever.Load() || l.live.Load() > 0 || busy() {
 			continue
 		}
-		if (bye > seen && now-bye > 6000) || now-seen > 4*60*1000 {
+		if time.Now().UnixMilli()-l.goneAt.Load() > 20000 {
+			logf("window closed, quitting")
 			quit()
 			return
 		}

@@ -332,6 +332,7 @@ func (s *Server) members() ([]Member, []string) {
 		wg.Add(1)
 		go func(id, repo string) {
 			defer wg.Done()
+			defer recoverLog("team.go")
 			var users []ghUser
 			var inv []ghInvite
 			_, err := s.gh.Do("GET", "/repos/"+repo+"/collaborators?per_page=100", nil, &users)

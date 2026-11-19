@@ -209,3 +209,5 @@ td.ck { text-align: center; } th.ck { text-align: center; }
 .col-release { border-color: #a371f755; }
 .col-shipped { opacity: .85; }
 .board { grid-template-columns: repeat(5, minmax(210px, 1fr)); }
+#offline { position: fixed; left: 50%; top: 14px; transform: translateX(-50%); background: #2a1418; border: 1px solid var(--bad); color: #ffd7dc; padding: 10px 16px; border-radius: 10px; z-index: 50; display: none; gap: 10px; max-width: 90vw; font-size: 13px; box-shadow: 0 10px 40px #000a; }
+#offline.on { display: flex; flex-wrap: wrap; }

@@ -52,7 +52,7 @@ func (s *Server) ensureLogIssue() (int, error) {
 
 // logEvent records something in the background; a failed write never blocks the action.
 func (s *Server) logEvent(kind, game, text string) {
-	go func() {
+	goSafe("logEvent", func() {
 		n, err := s.ensureLogIssue()
 		if err != nil {
 			return
@@ -61,7 +61,7 @@ func (s *Server) logEvent(kind, game, text string) {
 		studio := s.store.Get().Studio
 		_, _ = s.gh.Do("POST", fmt.Sprintf("/repos/%s/issues/%d/comments", studio, n),
 			map[string]string{"body": text + "\n<!-- hq:" + string(meta) + " -->"}, nil)
-	}()
+	})
 }
 
 func (s *Server) readLog() ([]Change, error) {
