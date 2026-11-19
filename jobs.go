@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"os/exec"
+	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -39,6 +40,7 @@ func (js *Jobs) Start(title, game string, env []string, fn func(j *Job) error) *
 	j := &Job{ID: strconv.FormatInt(js.next.Add(1), 10), Title: title, Game: game, Started: time.Now(), Env: env}
 	js.mu.Lock()
 	js.all[j.ID] = j
+	js.prune()
 	js.mu.Unlock()
 	go func() {
 		if game != "" {
@@ -64,6 +66,50 @@ func (js *Jobs) Start(title, game string, env []string, fn func(j *Job) error) *
 		j.mu.Unlock()
 	}()
 	return j
+}
+
+// prune keeps the newest 100 finished jobs (caller holds js.mu).
+func (js *Jobs) prune() {
+	if len(js.all) <= 120 {
+		return
+	}
+	var done []*Job
+	for _, j := range js.all {
+		j.mu.Lock()
+		if j.done {
+			done = append(done, j)
+		}
+		j.mu.Unlock()
+	}
+	sort.Slice(done, func(a, b int) bool { return done[a].Started.Before(done[b].Started) })
+	for i := 0; i < len(done)-100; i++ {
+		delete(js.all, done[i].ID)
+	}
+}
+
+type JobInfo struct {
+	ID      string    `json:"id"`
+	Title   string    `json:"title"`
+	Started time.Time `json:"started"`
+	Done    bool      `json:"done"`
+	OK      bool      `json:"ok"`
+}
+
+// List: newest first.
+func (js *Jobs) List(n int) []JobInfo {
+	js.mu.Lock()
+	out := make([]JobInfo, 0, len(js.all))
+	for _, j := range js.all {
+		j.mu.Lock()
+		out = append(out, JobInfo{j.ID, j.Title, j.Started, j.done, j.ok})
+		j.mu.Unlock()
+	}
+	js.mu.Unlock()
+	sort.Slice(out, func(a, b int) bool { return out[a].Started.After(out[b].Started) })
+	if len(out) > n {
+		out = out[:n]
+	}
+	return out
 }
 
 func (js *Jobs) Get(id string) *Job {

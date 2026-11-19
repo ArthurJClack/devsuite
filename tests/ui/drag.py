@@ -8,6 +8,7 @@ with sync_playwright() as p:
     pg.goto(f'http://127.0.0.1:7399/#k={k}'); pg.wait_for_timeout(3000)
     pg.click('#nav a[data-page=board]'); pg.wait_for_timeout(1500); pg.click('[data-view=shitbox]'); pg.wait_for_timeout(500)
     pg.locator('[data-quick=planning]').click(); pg.keyboard.type('drag me'); pg.keyboard.press('Enter'); pg.wait_for_timeout(22000)  # input still focused through polls
+    pg.locator('#bq').fill('drag me'); pg.wait_for_timeout(400); pg.locator('#bq').blur()
     el=pg.locator('#page-board .col[data-col=planning] .card', has_text='drag me').first
     n=int(el.get_attribute('data-card')); print('card', n, 'visible', el.is_visible())
     el.drag_to(pg.locator('#page-board .col[data-col=qa]')); pg.wait_for_timeout(2500)

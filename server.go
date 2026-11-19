@@ -288,6 +288,8 @@ func (s *Server) routes() http.Handler {
 		}
 		return nil, fmt.Errorf("no such package")
 	})
+	h("GET /api/jobs", func(w http.ResponseWriter, r *http.Request) (any, error) { return s.jobs.List(25), nil })
+	h("POST /api/logs", func(w http.ResponseWriter, r *http.Request) (any, error) { return ok(), openPath(configDir()) })
 	h("GET /api/job/{id}", func(w http.ResponseWriter, r *http.Request) (any, error) {
 		j := s.jobs.Get(r.PathValue("id"))
 		if j == nil {
@@ -337,7 +339,7 @@ func (s *Server) apiState(w http.ResponseWriter, r *http.Request) (any, error) {
 	out := map[string]any{
 		"studio": t.Studio, "studioRepo": l.Studio, "chatIssue": t.ChatIssue, "workspace": l.Workspace,
 		"godot": findGodot(l.Godot), "godotSaved": l.Godot, "signedIn": false, "columns": columns,
-		"gitOK": hasGit(), "version": version, "update": s.upd.Info(), "sync": s.syncs.Snapshot(), "autoUpdate": !l.NoAutoUpdate, "tokenFrom": map[bool]string{true: "pasted", false: "github cli"}[l.Token != ""],
+		"gitOK": hasGit(), "version": version, "update": s.upd.Info(), "logPath": filepath.Join(configDir(), "hq.log"), "sync": s.syncs.Snapshot(), "autoUpdate": !l.NoAutoUpdate, "tokenFrom": map[bool]string{true: "pasted", false: "github cli"}[l.Token != ""],
 	}
 	if u, err := s.me(); err == nil {
 		out["signedIn"], out["me"] = true, u

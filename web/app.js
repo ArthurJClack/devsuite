@@ -103,10 +103,10 @@ function confirmBox(title, text, yes = 'do it') {
   });
 }
 
-function prompt2(title, label, placeholder = '', multiline = false) {
+function prompt2(title, label, placeholder = '', multiline = false, extra = '') {
   return new Promise(res => {
     const field = multiline ? `<textarea id="pv" placeholder="${esc(placeholder)}"></textarea>` : `<input id="pv" placeholder="${esc(placeholder)}">`;
-    modal(`<h1>${esc(title)}</h1><label>${esc(label)}</label>${field}<div class="btns"><button class="pri" id="py">go</button><button data-close>cancel</button></div>`,
+    modal(`<h1>${esc(title)}</h1><label>${esc(label)}</label>${field}${extra}<div class="btns"><button class="pri" id="py">go</button><button data-close>cancel</button></div>`,
       (box, close) => {
         const go = () => { close(); res($('#pv', box).value); };
         $('#py', box).onclick = go;
@@ -209,7 +209,19 @@ async function runJob(promise, onDone) {
   }, 400);
 }
 $('#conClose').onclick = () => $('#console').classList.add('hidden');
-$('#jobsBtn').onclick = () => $('#console').classList.toggle('hidden');
+$('#jobsBtn').onclick = async () => {
+  const con = $('#console');
+  if (!con.classList.contains('hidden')) return con.classList.add('hidden');
+  con.classList.remove('hidden');
+  if ($('#conLog').textContent.trim()) return; // showing a job already
+  $('#conTitle').textContent = 'console'; $('#conState').textContent = 'recent jobs';
+  try {
+    const list = await api('/api/jobs');
+    $('#conLog').innerHTML = list.length ? list.map(j => `<a class="jobrow" data-job="${esc(j.id)}">${j.done ? (j.ok ? '✓' : '✗') : '⟳'} ${esc(j.title)} <span class="dim">${ago(j.started)}</span></a>`).join('')
+      : '<span class="dim">nothing has run yet. pushes, pulls, downloads and publishes show their output here.</span>';
+    $$('[data-job]', $('#conLog')).forEach(a => a.onclick = () => showJob(a.dataset.job));
+  } catch (e) { }
+};
 
 // ------------------------------------------------------------------ pages
 function show(page) {
@@ -269,7 +281,7 @@ function renderDash() {
           <a class="dim mono" href="${esc(a.url)}" target="_blank">${ago(a.at)}</a></div>`).join('') : '<div class="empty">nothing yet</div>'}</div></div>
         <div class="panel"><h2>my cards <a class="small" data-go="board">board →</a></h2>${!S.board.loaded ? `<div class="empty">${S.board.error ? esc(S.board.error) : studioReady() ? 'loading…' : 'set up the studio repo first'}</div>` : mine.length ? mine.map(cardHTML).join('') : '<div class="empty">nothing assigned to you. lucky</div>'}</div>
       </div>
-      <div class="panel"><h2>chat <a class="small" data-go="chat">open →</a></h2>${chatHTML(true)}</div>
+      <div class="panel chatpanel"><h2>chat <a class="small" data-go="chat">open →</a></h2>${chatHTML(true)}</div>
     </div>`;
   $('#dRef').onclick = () => refresh(true);
   bindSyncAll(p);
@@ -281,7 +293,7 @@ function gameTile(g) {
   const r = S.remote.find(x => x.id === g.id) || {};
   const l = g.local;
   const rel = r.release;
-  return `<div class="panel gcard" style="--c:${esc(g.color || '#8fd3ff')}" data-game="${esc(g.id)}">
+  return `<div class="panel gcard tile" style="--c:${esc(g.color || '#8fd3ff')}" data-game="${esc(g.id)}">
     <div class="title"><h3>${esc(g.name)}</h3><span class="tag c">${esc(g.genre)}</span></div>
     <div class="stat"><span>latest build</span><b>${rel ? esc(rel.tag_name) + (rel.prerelease ? ' <span class="tag warn">dev</span>' : '') : '—'}</b></div>
     <div class="stat"><span>downloads</span><b>${r.downloads ?? '—'}</b></div>
@@ -291,7 +303,7 @@ function gameTile(g) {
     ${syncLine(g)}
     ${r.last ? `<p class="dim" style="font-size:12px;margin:8px 0 0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(r.last.who)}: ${esc(r.last.msg)} · ${ago(r.last.at)}</p>` : ''}
     ${r.error ? `<p class="tag bad" style="margin-top:8px;white-space:normal">${esc(r.error)}</p>` : ''}
-    <div class="btns">${l.cloned ? `<button class="small ${l.behind ? 'ice' : ''}" data-op="pull">⟳ update</button><button class="small pri" data-op="push">↑ push</button><button class="small" data-op="editor">open</button><button class="small ice" data-op="playdev">▶ dev</button>`
+    <div class="btns tilebtns">${l.cloned ? `<button class="small ${l.behind ? 'ice' : ''}" data-op="pull">⟳ update</button><button class="small pri" data-op="push">↑ push</button><button class="small" data-op="editor">open</button><button class="small ice" data-op="playdev">▶ dev</button>`
       : `<button class="small ice" data-op="clone">download</button><button class="small" data-op="playdev">▶ dev</button>`}</div></div>`;
 }
 
@@ -302,7 +314,11 @@ function bindTiles(root) {
 async function gameOp(id, op, path) {
   const g = gameById(id);
   if (op === 'push') {
-    const msg = await prompt2(`push ${g.name} to dev`, 'what did you change? (it goes in the commit and the team chat)' + (g.local.dirty ? '' : ' — no unsaved changes, this sends your commits'), 'fixed the thing', false);
+    const l = g.local;
+    const what = l.dirty ? `<label>${l.dirty} changed file${l.dirty === 1 ? '' : 's'} going up</label><pre class="files">${esc(l.files.join('\n'))}</pre>`
+      : l.ahead ? `<p class="dim" style="font-size:12.5px">no unsaved changes: this sends your ${l.ahead} commit${l.ahead === 1 ? '' : 's'} that aren't on dev yet.</p>`
+      : `<p class="dim" style="font-size:12.5px">nothing new to send right now.</p>`;
+    const msg = await prompt2(`push ${g.name} to dev`, 'what did you change? (goes in the commit and the team chat)', 'fixed the thing', false, what);
     if (msg === null) return;
     return runJob(api(`/api/game/${id}/push`, { body: { message: msg } }));
   }
@@ -322,9 +338,9 @@ async function gameOp(id, op, path) {
 
 function publishRow(g) {
   const k = g.publishKinds || [];
-  if (!k.length) return `<div class="pubrow dim">publishing isn't set up for this game. add a release workflow or script in <a data-editgames>edit games list</a></div>`;
+  if (!k.length) return `<div class="arow pub"><span class="alabel">publish</span><span class="dim" style="font-size:12.5px">not set up: add a release workflow or script in <a data-editgames>edit games list</a></span></div>`;
   const how = g.release ? `runs <span class="mono">${esc(g.release.workflow)}</span> on github` : `runs <span class="mono">${esc(g.publish)}</span>`;
-  return `<div class="pubrow"><span class="dim">publish</span>
+  return `<div class="arow pub"><span class="alabel">publish</span>
     ${k.includes('update') ? '<button class="small pri" data-op="publish">🚀 update</button>' : ''}
     ${k.includes('hotfix') ? '<button class="small" data-op="hotfix">hotfix</button>' : ''}
     ${k.includes('test') ? '<button class="small ghost" data-op="test">test build</button>' : ''}
@@ -389,15 +405,17 @@ function renderGames() {
           <div class="stat"><span>unsaved changes</span><b>${l.dirty || 'none'}</b></div>
           ${syncLine(g, true)}
           ${l.files?.length ? `<details><summary>changed files (${l.dirty})</summary><pre class="files">${esc(l.files.join('\n'))}</pre></details>` : ''}
-          <div class="btns">
-            <button class="${l.behind ? 'ice' : ''}" data-op="pull">⟳ update (pull dev)</button><button class="pri" data-op="push">↑ push to dev</button><button data-op="tomain">dev → main</button>
+          <div class="arow"><span class="alabel">sync</span>
+            <button class="small ${l.behind ? 'ice' : ''}" data-op="pull" title="get everyone's latest dev">⟳ update</button><button class="small pri" data-op="push" title="commit your changes and push them to dev">↑ push to dev</button><button class="small" data-op="tomain" title="merge dev into main on github">dev → main</button>
           </div>
-          ${syncHistory(g)}
-          <div class="btns">
-            <button class="small" data-op="editor">godot editor</button><button class="small" data-op="play" title="runs your copy, with your changes">play mine</button><button class="small ice" data-op="playdev" title="runs the latest dev from github in a separate copy, doesn't touch yours">▶ play dev</button><button class="small" data-op="folder">folder</button>
-            <button class="small ghost" data-op="github">github</button><button class="small ghost" data-op="releases">releases</button>
+          <div class="arow"><span class="alabel">play</span>
+            <button class="small" data-op="editor">godot editor</button><button class="small" data-op="play" title="runs your copy, with your changes">play mine</button><button class="small ice" data-op="playdev" title="runs the latest dev from github in a separate copy, doesn't touch yours">▶ play dev</button>
+          </div>
+          <div class="arow"><span class="alabel">open</span>
+            <button class="small ghost" data-op="folder">folder</button><button class="small ghost" data-op="github">github</button><button class="small ghost" data-op="releases">releases</button>
           </div>
           ${publishRow(g)}
+          ${syncHistory(g)}
           ${l.tools?.length ? `<details><summary>tools (${l.tools.length})</summary><div class="tools">${l.tools.map(t => `<button data-op="tool" data-path="${esc(t.path)}" title="${esc(t.path)}">${esc(t.name)}</button>`).join('')}</div></details>` : ''}`
         : `<p class="dim">not on this computer yet. downloads the source into <span class="mono">${esc(l.path)}</span>${g.dev !== '' ? ', on the dev branch' : ''}.</p>
            ${g.release ? publishRow(g) + syncLine(g) : ''}
@@ -501,7 +519,7 @@ function renderBoard() {
     })() : ''}
     ${tpl && onBoard < 5 && B.loaded && B.cards.length ? `<div class="notice" style="margin-bottom:12px"><div class="grow"><b>${esc(viewGame.name)} board is empty.</b> <span class="dim">load the starter board: ${tpl.cards} cards from the game's docs (status, design plans, known issues).</span></div><button class="pri" id="bTpl">load starter board</button></div>` : ''}
     ${!B.loaded && !B.error ? '<div class="empty">loading the board…</div>' : `<div class="board">${S.state.columns.map(col => {
-      let list = sortCards(cards.filter(c => c.column === col));
+      let list = col === 'shipped' ? cards.filter(c => c.column === col).sort((a, b) => new Date(b.updated) - new Date(a.updated)) : sortCards(cards.filter(c => c.column === col));
       const total = list.length, cap = col === 'shipped' && !B.allDone ? 12 : 1e9;
       list = list.slice(0, cap);
       const shipNote = col === 'release' && viewGame?.publishKinds?.length ? `<div class="colnote">ships when you publish ${esc(viewGame.name)}</div>` : '';
@@ -860,7 +878,8 @@ function renderSettings() {
       <div class="panel"><h2>github</h2>
         <div class="stat"><span>signed in as</span><b>${esc(st.me?.login)}</b></div>
         <div class="stat"><span>token from</span><b>${esc(st.tokenFrom)}</b></div>
-        <div class="btns"><button class="danger" id="sOut">sign out</button></div>
+        <div class="stat"><span>log file</span><b class="mono" style="font-size:11.5px">${esc(st.logPath || '')}</b></div>
+        <div class="btns"><button class="small" id="sLogs">open log folder</button><button class="danger small" id="sOut">sign out</button></div>
       </div>
     </div>`;
   $('#sSave').onclick = async () => { try { await api('/api/settings', { body: { workspace: $('#sw').value, godot: $('#sgd').value } }); toast('saved'); refresh(); } catch (e) { fail(e); } };
@@ -869,6 +888,7 @@ function renderSettings() {
   $('#sAuto').onchange = async e => { try { await api('/api/settings', { body: { auto: e.target.checked } }); refresh(); } catch (er) { fail(er); } };
   $('#sCheck').onclick = async () => { try { const u = await api('/api/update/check', { body: {} }); toast(u.available ? u.latest + ' is available' : u.error || 'you\'re on the latest'); refresh(); } catch (e) { fail(e); } };
   if ($('#sUpd')) $('#sUpd').onclick = applyUpdate;
+  $('#sLogs').onclick = async () => { try { await api('/api/logs', { body: {} }); } catch (e) { fail(e); } };
   $('#sOut').onclick = async () => { await api('/api/signout', { body: {} }); refresh(true); };
 }
 

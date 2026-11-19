@@ -211,3 +211,21 @@ td.ck { text-align: center; } th.ck { text-align: center; }
 .board { grid-template-columns: repeat(5, minmax(210px, 1fr)); }
 #offline { position: fixed; left: 50%; top: 14px; transform: translateX(-50%); background: #2a1418; border: 1px solid var(--bad); color: #ffd7dc; padding: 10px 16px; border-radius: 10px; z-index: 50; display: none; gap: 10px; max-width: 90vw; font-size: 13px; box-shadow: 0 10px 40px #000a; }
 #offline.on { display: flex; flex-wrap: wrap; }
+
+/* quality sweep */
+input[type=checkbox] { accent-color: var(--salmon); }
+.gcard.tile { display: flex; flex-direction: column; }
+.gcard.tile .tilebtns { margin-top: auto; padding-top: 10px; }
+.chatpanel { position: sticky; top: 0; align-self: start; }
+.chatpanel .chat.mini { height: min(calc(100vh - 140px), 640px); min-height: 360px; }
+.arow { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: 8px; }
+.arow .alabel { width: 52px; flex: none; font-size: 11px; color: var(--dim); text-transform: lowercase; letter-spacing: .3px; }
+.arow.pub { margin-top: 10px; padding-top: 10px; border-top: 1px dashed var(--line); }
+.arow a { cursor: pointer; }
+.jobrow { display: block; cursor: pointer; color: #b7f5c9; padding: 2px 0; }
+.jobrow:hover { color: #fff; text-decoration: none; }
+#modal pre.files { max-height: 180px; margin: 8px 0 0; background: var(--bg2); padding: 8px; border-radius: 6px; }
+.stat b { text-align: right; max-width: 70%; overflow: hidden; text-overflow: ellipsis; }
+.arow.pub > .dim { flex: 1; min-width: 180px; }
+.tilebtns { gap: 5px; }
+.tilebtns button { padding: 3px 7px; }

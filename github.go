@@ -98,6 +98,9 @@ func (g *GH) Do(method, path string, body, out any) (string, error) {
 	} else if method == "GET" {
 		if et := resp.Header.Get("ETag"); et != "" {
 			g.mu.Lock()
+			if len(g.cache) > 600 { // bounded: drop it all, it refills with 304s
+				g.cache = map[string]cached{}
+			}
 			g.cache[key] = cached{et, data, link}
 			g.mu.Unlock()
 		}
