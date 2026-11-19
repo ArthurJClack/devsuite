@@ -117,7 +117,8 @@ function prompt2(title, label, placeholder = '', multiline = false, extra = '') 
 }
 
 // ------------------------------------------------------------------ state
-const S = { state: null, remote: [], activity: [], board: { cards: [], loaded: false, loading: false, error: '', at: 0, view: localStorage.getItem('hqBoard') || 'all', q: '', mine: false, prio: '', tag: '', allDone: false }, templates: {}, chat: [], chatLoaded: false, team: null, page: 'dash', seenChat: +localStorage.getItem('hqSeen') || 0 };
+const BF = (() => { try { return JSON.parse(localStorage.getItem('hqBoardFilters')) || {}; } catch (e) { return {}; } })();
+const S = { state: null, remote: [], activity: [], board: { cards: [], loaded: false, loading: false, error: '', at: 0, view: localStorage.getItem('hqBoard') || 'all', q: BF.q || '', mine: !!BF.mine, prio: BF.prio || '', tag: BF.tag || '', allDone: false }, templates: {}, chat: [], chatLoaded: false, team: null, page: 'dash', seenChat: +localStorage.getItem('hqSeen') || 0 };
 const gameById = id => (S.state?.games || []).find(g => g.id === id);
 const gColor = id => gameById(id)?.color || '#8fd3ff';
 const syncOf = id => S.state?.sync?.[id] || { history: [] };
@@ -490,6 +491,7 @@ function boardFilter(c) {
 }
 
 function renderBoard() {
+  try { localStorage.setItem('hqBoardFilters', JSON.stringify({ q: S.board.q, mine: S.board.mine, prio: S.board.prio, tag: S.board.tag })); } catch (e) { }
   const p = $('#page-board');
   if (!studioReady()) { p.innerHTML = '<div class="head"><h1>board</h1></div><div class="empty">set up the studio repo first (banner up top)</div>'; return; }
   const B = S.board;
@@ -665,7 +667,12 @@ function cardModal(c, col) {
 }
 
 // ---------- changes: every commit, release and team action, newest first
-const CH = { items: [], log: [], page: 1, more: false, loading: false, loaded: false, errors: [], game: '', branch: 'dev', types: { commit: true, release: true, event: true }, q: '', who: '', open: {} };
+// filters are remembered between visits (and restarts)
+const saved = (k, d) => { try { const v = JSON.parse(localStorage.getItem(k)); return v ?? d; } catch (e) { return d; } };
+const CHF = saved('hqChanges', {});
+const CH = { items: [], log: [], page: 1, more: false, loading: false, loaded: false, errors: [], game: CHF.game || '', branch: CHF.branch || 'dev',
+  types: { commit: true, release: true, event: true, ...(CHF.types || {}) }, q: CHF.q || '', who: CHF.who || '', open: {} };
+const saveCH = () => { try { localStorage.setItem('hqChanges', JSON.stringify({ game: CH.game, branch: CH.branch, types: CH.types, q: CH.q, who: CH.who })); } catch (e) { } };
 async function loadChanges(reset) {
   if (CH.loading) return;
   CH.loading = true;
@@ -681,6 +688,7 @@ async function loadChanges(reset) {
   softRender(['changes']);
 }
 function renderChanges() {
+  saveCH();
   const p = $('#page-changes');
   const q = CH.q.trim().toLowerCase();
   let all = CH.items.concat(CH.log.filter(e => !CH.game || e.game === CH.game || !e.game))

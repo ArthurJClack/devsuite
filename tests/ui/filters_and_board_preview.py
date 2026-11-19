@@ -1,0 +1,20 @@
+from playwright.sync_api import sync_playwright
+k=open('/tmp/hq-key').read().strip()
+with sync_playwright() as p:
+    b=p.chromium.launch(); pg=b.new_page(viewport={'width':1440,'height':900})
+    errs=[]; pg.on('pageerror', lambda e: errs.append(str(e)))
+    pg.goto(f'http://127.0.0.1:7399/#k={k}'); pg.wait_for_timeout(2500)
+    pg.evaluate("show('changes')"); pg.wait_for_timeout(1500)
+    pg.click('[data-chg=mars]'); pg.wait_for_timeout(800); pg.click('[data-cht=event]'); pg.wait_for_timeout(300); pg.select_option('#chBranch','main'); pg.wait_for_timeout(1200)
+    pg.evaluate("show('board')"); pg.wait_for_timeout(800); pg.select_option('#bPrio','p1'); pg.wait_for_timeout(300)
+    pg.reload(); pg.wait_for_timeout(3000)
+    pg.evaluate("show('changes')"); pg.wait_for_timeout(1500)
+    print('changes kept:', pg.locator('[data-chg=mars].on').count()==1, pg.locator('[data-cht=event].on').count()==0, pg.locator('#chBranch').input_value())
+    pg.evaluate("show('board')"); pg.wait_for_timeout(800)
+    print('board kept:', pg.locator('#bPrio').input_value())
+    pg.select_option('#bPrio',''); pg.wait_for_timeout(300)
+    for v,f in [('all','board-all'),('secret','board-secret'),('mars','board-mars')]:
+        pg.click(f'[data-view={v}]'); pg.wait_for_timeout(900); pg.screenshot(path=f'/tmp/{f}.png')
+    pg.click('[data-view=secret]'); pg.wait_for_timeout(600)
+    pg.click('#page-board .col[data-col=implementation] .card >> nth=0'); pg.wait_for_timeout(1200); pg.screenshot(path='/tmp/board-card.png')
+    print('errors', errs); b.close()
