@@ -51,7 +51,7 @@ needs [git](https://git-scm.com/downloads). godot for opening games.
 
 hq checks this repo's releases on start and every 3 hours. when there's a new one it downloads it, swaps itself and restarts on the same port once nothing is running. your open tab keeps working. turn it off or update by hand in settings → updates. 
 
-to ship a new version: `git tag v0.2.0 && git push origin v0.2.0`. actions tests it, builds windows/mac/linux and makes the release; everyone's hq picks it up.
+to ship a new version: change `VERSION` (e.g. `0.2.2`) and push to main (or push a tag, or actions → release → run workflow). actions tests it, builds windows/mac/linux and makes the release; everyone's hq picks it up.
 
 ```sh
 go build -o hq .            # or: GOOS=windows go build -o hq.exe .

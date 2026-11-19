@@ -13,4 +13,4 @@ checks before pushing:
 go vet ./... && GOOS=windows go build -o /dev/null . && node --check web/app.js && tests/e2e.sh && tests/update.sh && tests/life.sh
 ```
 
-ship a version: push a `v*` tag; every install auto-updates to it.
+ship a version: put the new version in `VERSION` (e.g. 0.2.2), commit, push to main. actions tests, builds and releases it; every install auto-updates to it. (a pushed tag or actions → release → run workflow also work.) the user has OK'd claude shipping hq this way.
