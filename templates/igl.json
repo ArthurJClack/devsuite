@@ -1,0 +1,50 @@
+{
+ "game": "igl",
+ "name": "IGL",
+ "cards": [
+  {
+   "title": "balance pass: headless sim-test win rates per mode",
+   "column": "planning",
+   "priority": "p2",
+   "tags": [
+    "design",
+    "tools"
+   ],
+   "body": "the README's headless balance test plays every stratbook execute 6x per mode and prints win rates (--sim-test, IGL_TEST_MODES=exec)."
+  },
+  {
+   "title": "more maps through the marker editor",
+   "column": "planning",
+   "priority": "p2",
+   "tags": [
+    "world"
+   ],
+   "body": "README flow: drop <name>.glb in assets/cs2/maps, place spawns, sites, ct holds and rotate spots with F2, save with F3."
+  },
+  {
+   "title": "real cs2 animations on agents",
+   "column": "qa",
+   "priority": "p1",
+   "tags": [
+    "art"
+   ],
+   "body": "62 agent clips on a layered AnimationTree, additive shot/flinch, gun on weapon_hand_R (Nov 15). check it in matches."
+  },
+  {
+   "title": "dust2 playable",
+   "column": "qa",
+   "priority": "p1",
+   "tags": [
+    "world"
+   ],
+   "body": "markers from the map's buyzone/bombsite brushes, auto rush/exec strats from the navmesh, ct holds aimed at t routes (Nov 15)."
+  },
+  {
+   "title": "prototype: sim, 4 modes (rts, execute, exec + timeouts, hybrid), caster, cs2 export",
+   "column": "shipped",
+   "tags": [
+    "feature"
+   ]
+  }
+ ]
+}

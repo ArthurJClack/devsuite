@@ -153,6 +153,13 @@ pick=[c for c in s if c["title"].startswith("pick the combat")][0]
 assert pick["column"]=="implementation" and pick["priority"]=="p0" and pick["checkTotal"]==6, pick
 assert sum(1 for c in s if c["column"]=="shipped")>=7, [c["column"] for c in s]
 print("✓ starter board imported once (no dupes on re-import)")'
+c -X POST http://127.0.0.1:7399/api/board/import -d '{"game":"all"}' | wait_job | tail -1
+c http://127.0.0.1:7399/api/board | python3 -c '
+import json,sys;b=json.load(sys.stdin);by={}
+for c in b: by[c["game"]]=by.get(c["game"],0)+1
+assert by.get("mars",0)>=14 and by.get("shitbox",0)>=39 and by.get("shells",0)>=3, by
+v=[c for c in b if c["title"]=="backlog: vehicles"][0]; assert v["checkTotal"]>=15 and v["checkDone"]>0, v
+print("✓ starter boards for every game (", by, ")")'
 
 # pipeline: a card in "release" ships when the game is published
 c -X POST http://127.0.0.1:7399/api/board -d '{"title":"ship me","game":"secret","column":"release"}' > "$T/ship.json"

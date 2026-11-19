@@ -1,0 +1,126 @@
+{
+ "game": "mars",
+ "name": "FOR/AGAINST",
+ "cards": [
+  {
+   "title": "backlog: vehicles",
+   "column": "planning",
+   "priority": "p2",
+   "tags": [
+    "feature"
+   ],
+   "body": "from docs/BACKLOG.md (Vehicles). 11 of 15 already in the game.\n\n- [x] Drivable hatchback and SUV on simplified Shitbox Rally physics: engine torque curve, gears, clutch, wheel slip, weight transfer, backfires\n- [x] One click to get in or out; calm and combat versions of getting in and out\n- [x] One-click drive to a destination along roads and open ground, with the AI driver avoiding obstacles\n- [x] Firing from inside through open windows at realistic angles (no shooting through your own pillar or roof)\n- [x] Vehicle armor by panel: engine block and wheels as cover, doors as concealment (driven cars too: checked per seat)\n- [x] Tires shot out: a flat drags the car to that side and drops grip\n- [x] Radiators and engines shot: overheating, smoke, then a dead engine\n- [x] Ramming: doors, fences and people (with injury); men on foot get out of the way of a car they see or hear\n- [x] Dismount drills: everyone out on the far side, then down behind the engine block and the wheels\n- [ ] Mounted LMG on the SUV roof, with a gunner seat\n- [x] Passengers' wounds from rounds through the body panels\n- [x] Headlights at night, brake lights, interior light when a door opens\n- [ ] Engine sound from the Shitbox engine model, drivetrain whine, gear changes\n- [ ] Vehicle chatter: \"STEP ON IT\", \"DRIVER'S HIT\"\n- [ ] Burnouts and handbrake turns for the player driving directly"
+  },
+  {
+   "title": "backlog: soldiers and ai",
+   "column": "planning",
+   "priority": "p2",
+   "tags": [
+    "tech"
+   ],
+   "body": "from docs/BACKLOG.md (Soldiers and AI). 5 of 35 already in the game.\n\n- [ ] Suppression that actually keeps heads down: suppressed troops won't peek\n- [ ] Leaders: a team leader who gives the orders, and the team falls apart a bit if he dies\n- [x] Morale per team: casualties, being flanked and losing the leader lead to falling back or surrendering\n- [ ] Better flanking: use cover-to-cover routes out of the enemy's sight\n- [ ] Fire and maneuver at squad level: one team suppresses, the other moves\n- [ ] Grenade cooking for timing\n- [ ] Grenades thrown through windows and over walls with arcs\n- [ ] Picking up ammo from the dead and from friends (\"throw me a mag\")\n- [ ] Sharing ammo inside the team automatically\n- [ ] Weapon malfunctions (rare), cleared with a tap-rack\n- [ ] Weapon pickup: grab an enemy's rifle when your own is empty or broken\n- [ ] Fatigue and stamina: sprints run out; aim gets worse after running\n- [ ] Heat and cold over long missions\n- [ ] Hearing damage after explosions indoors (deaf for a while: missed callouts)\n- [ ] Night adaptation: eyes adjust over a minute after the lights go out\n- [ ] Personal skills per soldier (marksmanship, CQB, medical, explosives) used by the sim\n- [ ] Veterancy: skills grow with time in the field\n- [ ] Individual fear: some freeze, some charge\n- [ ] Friendly fire awareness: check fire when a friend steps into the line\n- [ ] Civilians that flee, hide, or panic into the line of fire\n- [ ] Hostages: held, used as shields, rescued\n- [x] Surrender and detainees: flex-cuffs, search, move to a collection point\n- [ ] Enemy feints and ambushes\n- [ ] Enemy that retreats inside the house to a fallback room\n- [ ] Barricaded rooms: furniture against doors\n- [ ] Booby traps and tripwires on doors\n- [ ] IEDs on roads, found by careful movement or drones\n- [ ] Snipers relocating after a shot\n- [x] AI using smoke to cross open ground\n- [ ] AI using drones to spot (both sides)\n- [x] Counter-sniper drills: find the shooter by crack-thump and suppress\n- [ ] Medics triaging several casualties by severity\n- [ ] CASEVAC to a vehicle and out\n- [x] Buddy carry (fireman's carry) for longer moves\n- [ ] Better wounded behavior: crawling to cover, calling for help, playing dead"
+  },
+  {
+   "title": "backlog: cqb",
+   "column": "planning",
+   "priority": "p2",
+   "tags": [
+    "combat"
+   ],
+   "body": "from docs/BACKLOG.md (CQB). 1 of 18 already in the game.\n\n- [ ] Corner pie for hallway corners, not just doors\n- [ ] Two-man and three-man entries chosen by room size\n- [ ] Hallway clearing with leapfrogging\n- [x] Stairwells and upper floors\n- [ ] Doors that open in or out, with hinge sides that pick the entry\n- [ ] Mousehole breaching through interior walls as standard\n- [ ] Window breaching (\"break and rake\") and window entry\n- [ ] Flashbang timing with the door opening\n- [ ] Holding the door: someone stays to hold the hallway\n- [ ] Dead space: rooms checked under beds and in closets\n- [ ] Search and mark: clearing marks on doors (chalk or chem lights)\n- [ ] Room clear reports with counts (\"ONE DOWN, CLEAR\")\n- [ ] Breach selection by door material (wood, steel, glass)\n- [ ] Ballistic breaching rounds for the shotgun\n- [ ] Thermal breaching charge (cutting through steel doors)\n- [ ] Shield-led hallway movement with the stack behind the shield\n- [ ] Tactical light use indoors: lights on for the entry, off after\n- [ ] NVG-only night entries for the full stealth version"
+  },
+  {
+   "title": "backlog: weapons and ballistics",
+   "column": "planning",
+   "priority": "p2",
+   "tags": [
+    "combat"
+   ],
+   "body": "from docs/BACKLOG.md (Weapons and ballistics). 2 of 22 already in the game.\n\n- [ ] Barrel length and muzzle velocity per weapon config\n- [x] Ammo types: ball, AP, tracer, subsonic, hollow point, buckshot vs slugs vs breaching rounds (FAData.ROUNDS, FAAmmo)\n- [x] Tracers per mag setting (every 4th, every 5th, last 3, none)\n- [ ] Under-barrel grenade launchers (M320, GP-25)\n- [ ] Rocket launchers for vehicles and buildings (AT4, RPG-7)\n- [ ] Hand grenade types: frag, flash, smoke colors, CS gas, incendiary\n- [ ] Claymores and other directional mines\n- [ ] Breaching charges by size (door, wall, strip charge)\n- [ ] Precision rifle zeroing and turret dialing for the player\n- [ ] Spotter calls for corrections (\"HOLD TWO MILS LEFT\")\n- [ ] Spin drift and Coriolis at extreme range\n- [ ] Temperature effect on muzzle velocity\n- [ ] Bullet fragmentation spray behind thin walls\n- [ ] Ricochets that can wound\n- [ ] Overpenetration through bodies into the next person\n- [ ] Weapon damage when shot (a rifle hit in the hand is ruined)\n- [ ] Barrel heat for sustained fire (mirage, then accuracy loss, then cook-off on the MG)\n- [ ] Bipod deployment on walls and windowsills\n- [ ] Suppressor heat and first-round pop\n- [ ] Laser and light controls: IR vs visible, pressure switch, strobe\n- [ ] Optic zeroing and parallax for the player view\n- [ ] Thermal and NVG optics on rifles"
+  },
+  {
+   "title": "backlog: armor and medical",
+   "column": "planning",
+   "priority": "p2",
+   "tags": [
+    "combat"
+   ],
+   "body": "from docs/BACKLOG.md (Armor and medical). 1 of 10 already in the game.\n\n- [ ] Plate fragments and spall injuries\n- [ ] Helmets that deflect at angles\n- [ ] Blunt trauma injuries under plates (ribs)\n- [ ] Eye protection (shards from impacts near the face)\n- [ ] Tourniquet time limits (convert later)\n- [ ] Hypothermia from blood loss in the rain\n- [ ] Pain management with morphine (lower aim, back up faster)\n- [x] Splints for broken legs (limp instead of crawl)\n- [ ] Field surgery at a casualty collection point\n- [ ] A persistent injury list after the mission"
+  },
+  {
+   "title": "backlog: environment and destruction",
+   "column": "planning",
+   "priority": "p2",
+   "tags": [
+    "world"
+   ],
+   "body": "from docs/BACKLOG.md (Environment and destruction). 2 of 18 already in the game.\n\n- [x] Multi-story buildings with stairs and floors\n- [ ] Basements\n- [ ] Furniture that is real cover or concealment by material\n- [ ] Fire spreading through wooden houses\n- [ ] Smoke from fires blocking sight\n- [ ] Dust after explosions blocking sight for a few seconds\n- [ ] Glass breaking under fire, then no longer blocking anything\n- [ ] Fences that can be climbed or cut\n- [x] Vaulting over low walls and through windows\n- [ ] Water: wading slows, deep water swims\n- [ ] Mud slows movement, leaves footprints the enemy can follow\n- [ ] Weather changes during a mission (rain starts, fog rolls in)\n- [ ] Time of day changes with dawn and dusk\n- [ ] Streetlights and porch lights that can be shot out\n- [ ] Power cut for a whole block\n- [ ] Trees that fall when shot enough (thin ones)\n- [ ] Craters from mortars that are cover\n- [ ] Terrain cover from folds in the ground on the valley map"
+  },
+  {
+   "title": "backlog: stealth and intel",
+   "column": "planning",
+   "priority": "p2",
+   "tags": [
+    "design"
+   ],
+   "body": "from docs/BACKLOG.md (Stealth and intel). 2 of 10 already in the game.\n\n- [x] Detection indicators on enemies (unaware, suspicious, searching, combat)\n- [ ] Noise rings for your own soldiers' sound\n- [ ] Silent takedowns from behind\n- [ ] Hiding bodies\n- [ ] Enemies investigating noises in groups\n- [ ] Dogs that smell and bark\n- [ ] Cameras (the stage CCTV idea) the player can find and cut\n- [ ] Radio intercepts giving enemy positions\n- [ ] Marking targets from a drone for the whole team\n- [x] Intel items in houses (phones, maps) for the story to use later"
+  },
+  {
+   "title": "backlog: player control and ui",
+   "column": "planning",
+   "priority": "p2",
+   "tags": [
+    "ui"
+   ],
+   "body": "from docs/BACKLOG.md (Player control and UI). 1 of 16 already in the game.\n\n- [ ] Formation choice (wedge, file, line, diamond)\n- [ ] Plan mode with timeline: draw routes with timings and go-codes on a pause\n- [ ] Waypoint stances and paces per segment\n- [ ] Fire sectors set by drag for each soldier\n- [ ] Quick orders wheel\n- [ ] Squad cards with portraits and status\n- [ ] Better minimap\n- [ ] Kill feed and after-action report\n- [ ] Replay with free camera\n- [ ] Photo mode\n- [ ] Direct control: lean keys, stance keys, throwing arcs\n- [ ] Direct control: aiming down the optic, magnified properly\n- [ ] Gamepad support for the commander view\n- [x] Rebindable keys\n- [ ] A key reference overlay (F1)\n- [ ] Accessibility: color-blind palettes, text size"
+  },
+  {
+   "title": "backlog: co-op and meta",
+   "column": "planning",
+   "priority": "p2",
+   "tags": [
+    "feature"
+   ],
+   "body": "from docs/BACKLOG.md (Co-op and meta). 0 of 16 already in the game.\n\n- [ ] Steam lobbies and invites\n- [ ] Drop-in, drop-out\n- [ ] Per-player squads with different factions\n- [ ] Voice-proximity radio for players\n- [ ] Versus mode: players on both sides\n- [ ] Persistent operator roster with names, faces and records\n- [ ] Loadout presets per mission type\n- [ ] Mission editor for test scenarios\n- [ ] Procedural houses with more floor plans\n- [ ] Procedural compounds and villages\n- [ ] Weather and time presets in the scenario menu\n- [ ] A shooting range with targets that report groupings\n- [ ] A kill house with timer and scoring for drills\n- [ ] Characters from the story: voices, traits, relationships (docs/CHATTER.md)\n- [ ] Chatter replies between soldiers\n- [ ] Recorded or generated voice lines on the chatter events"
+  },
+  {
+   "title": "backlog: realism pass (next)",
+   "column": "planning",
+   "priority": "p1",
+   "tags": [
+    "combat"
+   ],
+   "body": "from docs/BACKLOG.md (Realism pass (next)). 5 of 35 already in the game.\n\n- [x] Wounds by organ, bleed rates by vessel, tourniquets, packing, self-aid, care under fire\n- [x] Real throw distances, 4.5 s frag fuses, cooking close in\n- [x] Suppression and stress by class; untrained troops spray and stay exposed\n- [ ] Combat load weight: plates, ammo and water slow you, tire you sooner, and make climbing harder\n- [ ] Stamina and heart rate: sprints run out, aim shakes after running, recovers in cover\n- [x] Ammo counting by the round, not by the mag: partial mags kept, consolidated in lulls (every ammo type)\n- [ ] Reload types: tactical (keep the mag) vs speed (drop it), chosen by the situation\n- [ ] Weapon malfunctions by condition and round count; dirt and water raise the odds\n- [ ] Hearing: gunfire indoors deafens without ear pro; ear pro on the elite and pro classes\n- [ ] Muzzle blast and flash give away position; suppressors cut both\n- [ ] Ballistic dispersion by ammo lot and barrel heat; first-round cold-bore shift for snipers\n- [ ] Wind that varies along the bullet's path (valleys, buildings), shown only by flags, grass and mirage\n- [ ] Range estimation errors that depend on optics and terrain (dead ground, haze)\n- [ ] Spotting: muzzle flash at night, silhouettes on ridgelines, movement against the background\n- [ ] Night: no NVG means real darkness; NVG halos at lights; thermal blinded by fire\n- [ ] Body armor coverage by actual plate size (10 x 12 in front plate), side plates, plate angles\n- [ ] Helmet deflection at shallow angles; ricochets off helmets\n- [ ] Shock and awe: flashbang effects by distance and facing, temporary deafness and blindness \u2713 partly\n- [ ] Fragmentation patterns that leave shadows behind cover and lying flat helps \u2713 partly\n- [ ] Blast overpressure worse indoors (rooms amplify)\n- [ ] Bullet penetration through multiple people \u2713 and through vehicle doors \u2713; tires and engines to add\n- [ ] Casualty evacuation to a collection point; triage by priority; tourniquet conversion\n- [ ] Morale by team: leader killed, buddy killed, flanked, out of ammo; breaking and running\n- [ ] Surrender and detainee handling: cuffs, search, guard\n- [ ] Rules of engagement: hostile intent, civilians, escalation of force\n- [ ] Communication delays: radio calls take time, can be jammed; hand signals when quiet\n- [ ] Fog of war on the enemy too: they report and act on what they actually saw \u2713\n- [ ] Doors that stick, open inward or outward, locked from one side\n- [x] Stairs that slow movement and are deadly to fight on\n- [ ] Shooting from inside rooms at windows (staying back from the opening) \u2713 cover rules\n- [ ] Wet and cold: hypothermia in water, rain slows everything a little\n- [ ] Day length, dawn and dusk light levels shifting during a mission\n- [ ] Snow and mud tracks the enemy can follow \u2713 footprints, AI tracking to add\n- [ ] Vehicle sound carrying far; engines heard before seen\n- [ ] Drones: battery in cold, signal loss behind hills, operators found by direction-finding"
+  },
+  {
+   "title": "backlog: vehicle roadmap",
+   "column": "planning",
+   "priority": "p2",
+   "tags": [
+    "feature"
+   ],
+   "body": "from docs/BACKLOG.md (Vehicle roadmap). 5 of 15 already in the game.\n\n- [x] Hatchback and SUV, gears, slip, backfires, seats, firing ports by window\n- [x] Enemy vehicle patrols that dismount on contact\n- [x] Pickup with a mounted machine gun (technical), with a gunner seat that turns\n- [ ] Armored SUV: doors and glass that stop pistol and rifle rounds, heavier and slower\n- [ ] Light armored vehicle (MRAP) with a remote weapon station; immune to small arms, not to charges\n- [ ] Vehicle damage model: \u2713 tires shot flat, radiators, engines, fuel leaks and fuel fires; crew wounds from spall to add\n- [ ] Convoys: column driving with spacing, react to contact drills (push through, dismount, reverse)\n- [ ] Ambush drills for the player's convoys: the AI driver accelerates out of the kill zone\n- [ ] Road network and navigation for vehicles separate from foot paths; traffic for city maps\n- [ ] Checkpoints: stop, search, vehicle-borne threat\n- [x] Headlights and blackout driving at night; driving on NVG\n- [ ] Vehicle sounds: engines by model, gear changes, horn, door slams\n- [x] Ramming doors and fences (there are no gates to ram yet: they're gaps); breaching a wall with a truck to add\n- [ ] Boats on the valley river; fording depth by vehicle height\n- [ ] Helicopters (insertion, extraction, a door gunner), much later"
+  },
+  {
+   "title": "release v0.1.9.1: hotfix: hold orders keep the picked cover, WITNESS line-of-fire fixes",
+   "column": "shipped",
+   "tags": [
+    "feature"
+   ]
+  },
+  {
+   "title": "release v0.1.9.0: combat, world fixes, rebalance, enemy ai",
+   "column": "shipped",
+   "tags": [
+    "feature"
+   ]
+  },
+  {
+   "title": "release v0.1.8.0: story jobs, dialogue editor, co-op SERVER FARM + OPEN SEASON",
+   "column": "shipped",
+   "tags": [
+    "feature"
+   ]
+  }
+ ]
+}

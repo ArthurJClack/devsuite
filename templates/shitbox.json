@@ -1,0 +1,357 @@
+{
+ "game": "shitbox",
+ "name": "SHITBOX RALLY",
+ "cards": [
+  {
+   "title": "audit: seen broken",
+   "column": "implementation",
+   "priority": "p2",
+   "tags": [
+    "bug"
+   ],
+   "body": "open items from docs/AUDIT_2026-11.md (seen broken (tests + the owner's logs)): 6 open, 8 fixed.\n\n- [x] bug, seen `race_forum_test` dies at test.gd:83 \"Trying to cast a freed object\": since pr 587 it opens\n- [x] bug, seen `rivals2_test` fails: fonchilada has 1 forum dm (the test wants 2+ and 20 lines). add a few\n- [x] bug, seen replays: 9 broken `.sbreplay` files from 2026-10-29 (4 to 532 bytes) sit in user://replays.\n- [x] bug, seen 10 zero-byte `user://telemetry/*.tlm` files (2026-10-29 21:26-21:43). don't keep empty ones.\n- [x] bug, seen \"gauge pod: no dash found on wrx_wagon\" 48 times in one session (also civic_ek, garage\n- [x] bug, seen wrx_wagon and civic_ek get no gauge pod at all (no dash found). give them a `gauge_pod.pos`\n- [x] bug, seen \"Parse JSON failed. Error at line 0\" once per race at the intro (6 times 2026-10-30): an empty\n- [ ] bug, seen \"Parameter data.tree is null\" right after \"stage geometry done\" (10-29, 11-01): `get_tree()` on\n- [ ] bug, seen `grab_focus` on a control that isn't in the tree (11-01, garage).\n- [ ] bug, seen pnw_flora trees: \"invalid UID ... pnw_flora_atlas.png\" on 6 glbs and \"possible cyclic resource\n- [x] bug, seen a corrupt cached night portrait (`user://radio/portraits_night/gsp_angie_corrado.png`) errors\n- [ ] perf, seen 145 of 350 hitches in the logs are at the intro (avg 470 ms, every race, scripts 90-280 ms).\n- [ ] perf, seen mid-stage hitches of 150-630 ms come back at the same road points run after run (1810, 2410,\n- [ ] test `net_smooth_test` is a `--script` test with no .tscn, so the usual runner can't start it. add a"
+  },
+  {
+   "title": "audit: bugs from reading the new code / more from reading",
+   "column": "implementation",
+   "priority": "p2",
+   "tags": [
+    "bug"
+   ],
+   "body": "open items from docs/AUDIT_2026-11.md (bugs from reading the new code (prs 566-591) / more from reading): 1 open, 4 fixed.\n\n- [x] bug the cctv pole's spot (`_pick_spot`) only avoids bridge decks: it can land in a junction's mouth,\n- [x] bug session_results on a rotating playlist runs two countdowns (`_auto` when everyone pressed\n- [ ] bug the results' \"Run N of M\" for a ladder set shows even when your car is wrecked (dead / seized)\n- [x] bug forum_climb \"race again\" on a beaten cast member starts a full set that counts for nothing and\n- [x] bug `LADDER.start_set` uses `randomize()` for the seed: a set's stages can't be reproduced for a bug"
+  },
+  {
+   "title": "audit: performance",
+   "column": "implementation",
+   "priority": "p2",
+   "tags": [
+    "tech"
+   ],
+   "body": "open items from docs/AUDIT_2026-11.md (performance): 6 open, 8 fixed.\n\n- [ ] perf junction blocks: every box is its own MeshInstance3D with its own new material. a Type III\n- [x] perf junction \"open\" signs bob with a looping tween forever, near or not. stop it out of range.\n- [x] perf car.gd reads `Settings.get_value` 5 times per car per physics tick (transmission, auto_clutch,\n- [ ] perf race.gd `_contact_tick` walks `get_nodes_in_group(\"cars\")` and reads the contact setting every\n- [ ] perf stage_traffic `_state()` raycasts the ground for every live traffic car every tick, the far ones\n- [x] perf stage_traffic builds a new lambda (`rpm_of`) per car per tick in `_state()`. make it a function.\n- [ ] perf stage_traffic `_drive()` loops all observed cars twice per car (O(n^2) with traffic + racers),\n- [x] perf stage_cctv pip redraws its osd every frame while visible (`_osd.queue_redraw()` in `_process`); the\n- [ ] perf rev cam `_process` sets 4 shader params every frame while the cockpit view is up, even when the\n- [x] perf lamp_glare.gd and mirrors.gd walk `get_nodes_in_group(\"cars\")` every frame; keep a list that\n- [x] perf the replay list (`Replay.list_files`) decompresses every replay's header each time it's opened.\n- [x] perf traffic cars are full Car nodes with an EngineSound + CarSfx each while parked out of the world\n- [x] perf `Settings.gfx()` indexes `GFX[quality()]` on every call and `quality()` itself reads settings;\n- [ ] perf stage_cctv / rev cam each keep a SubViewport with its own camera and `Retro.sun_twin` call; when"
+  },
+  {
+   "title": "audit: ux / ui",
+   "column": "implementation",
+   "priority": "p2",
+   "tags": [
+    "ui"
+   ],
+   "body": "open items from docs/AUDIT_2026-11.md (ux / ui): 34 open, 5 fixed.\n\n- [ ] ux no \"drive again\" on the login screen or the results: the last car + stage + opponent in one press\n- [ ] ux F5 restart has no confirm or hold: one key and the run is gone. make it a short hold like reset.\n- [x] ux the climb board doesn't say what a set needs to win (2-0 in a 2-run set: a 1-1 is a loss by design, see 21).\n- [ ] ux the results screen for a ladder run doesn't show the run's time gap to the rival (`_gap_s` is worked\n- [ ] ux after a ladder set is decided, the results only offer \"back\": add \"race the next one\" (the next\n- [ ] ux the climb board lists locked chapters' whole cast up front, which spoils who's coming. show the\n- [x] ux the contact penalty shows \"CONTACT - SLOWDOWN 6 s\" on the event line but nothing says who it was\n- [ ] ux the slowdown countdown sits on the surface line; a small bar under the speedo would read faster.\n- [x] ux \"CUT - RESET\" doesn't say how far was cut. add the ft over the limit, once.\n- [ ] ux traffic amount 0 and traffic off are two controls for one thing. fold \"off\" into the slider's 0.\n- [ ] ux the cctv inset can sit over the radio call box / brain panel on the right at big text sizes; stack\n- [ ] ux the cctv inset has no way to hide it mid-race (only the setting); bind it to the hud toggle group.\n- [ ] ux the rev cam guide lines only come up in reverse; offer them on the hold of the look-back key too.\n- [ ] ux brain screen hold-to-pause gives no feedback while held. fill a ring like the reset hold.\n- [ ] ux the playlist \"next race in N\" only shows in the lobby. show it on the results too (session_results\n- [ ] ux the playlist editor can't reorder entries; add up / down.\n- [ ] ux the p&l panel has no per-car filter; the data is there (`per_car()`).\n- [ ] ux the ledger keeps 300 runs but the panel shows 20; add a \"season\" (last 50 / all) toggle.\n- [ ] ux the crew line says \"Waiting in AllDatum: $340\" but there's no button to it from the results.\n- [ ] ux controls menu: show conflicts (two actions on one key) in red when binding.\n- [ ] ux pad users get no hint for the brain screen key (F8 is keyboard-only by default).\n- [ ] ux the wheel calibration (\"minimum force\") has no cancel button on screen, only the code path.\n- [ ] ux the ffb \"auto strength\" result isn't shown: tell the player what it set after the drive.\n- [ ] ux first time a wheel axis is bound through SDL (not the bridge), pad smoothing (0.4) still applies.\n- [ ] ux the session results' auto-advance (`RESULTS_HOLD` 20 s) gives no way for the host to hold the\n- [ ] ux the replay list shows nothing for files it can't read; say \"N replays couldn't be read\" with a\n- [x] ux loading tips hard-code keys (\"Restart with F5\", \"T or D-pad right\"): fill them from the bindings\n- [x] ux loading_new.txt (\"what's new\") is weeks old and one line is wrong (\"AI cars are matched to your\n- [ ] ux garage walk mode: no corner legend for use / hold to leave / menu once the login hint is gone.\n- [ ] ux garage hold actions (roller door = drive, side door = log out) show no fill ring while held.\n- [ ] ux a \"classic\" pad preset (handbrake on a face button, auto clutch) for people coming from other\n- [ ] ux split-screen players share one bindings profile; let each pick one.\n- [ ] ux radio calls are on / off only; add \"before the start only\" for people who want quiet with the\n- [ ] ux a first-wheel wizard (rotation, pedals, h-shifter, ffb) when a wheel shows up unbound; it's four\n- [ ] ux the highway battle has no way in from the Rally Planner (endless highway is only in stage setup).\n- [ ] ux traffic cars have no name over them, which is right, but the radio call names them; the call box\n- [ ] ux the contact penalty mode (\"slowdown\" / \"time\" / \"off\") isn't shown anywhere in a race; put it in\n- [ ] ux the cut-reset distance (10 ft) is a slider in feet with no picture; a one-line hint \"past the\n- [ ] ux race.net's climb board has no \"what's a set\" help row for a first-time player."
+  },
+  {
+   "title": "audit: new systems polish / traffic",
+   "column": "planning",
+   "priority": "p2",
+   "tags": [
+    "bug"
+   ],
+   "body": "open items from docs/AUDIT_2026-11.md (new systems polish / traffic): 11 open, 0 fixed.\n\n- [ ] polish traffic cars never indicate: blink the turn signal for a lane change and when going round a\n- [ ] polish traffic never pulls off to let a car past on a single-track road; they only shuffle to their\n- [ ] polish traffic always uses the same 0.27 g corner speed; older / heavier cars could be gentler.\n- [ ] polish a wrecked traffic car sits forever with hazards; after a while a tow truck or nothing (recycle\n- [ ] polish traffic doesn't use fog lamps in fog, or wipers in rain.\n- [ ] polish traffic at night: dip high beams for oncoming cars (they only flash when held up).\n- [ ] polish traffic radio's \"near_miss\" fires at 60% odds but the horn only on held-up; a near miss should\n- [ ] polish traffic density doesn't change with the time of day (3 am vs 6 pm). scale it with the hour.\n- [ ] polish no traffic on junction side streets (osm streets / proc junctions): the odd car waiting at a\n- [ ] polish traffic doesn't react to police lights / sirens (pull over).\n- [ ] polish the modded-car chance (15%) is the same at noon and midnight; late at night it should be the"
+  },
+  {
+   "title": "audit: new systems polish / cctv",
+   "column": "planning",
+   "priority": "p2",
+   "tags": [
+    "bug"
+   ],
+   "body": "open items from docs/AUDIT_2026-11.md (new systems polish / cctv): 4 open, 0 fixed.\n\n- [ ] polish one camera per stage; long stages (> 5 km) could have two.\n- [ ] polish the feed never shows the ai rival passing it; if they're within a few seconds, follow them too.\n- [ ] polish the cctv clip isn't kept in the replay's camera cuts (the replay director could use the pole\n- [ ] polish the stamp's date is today's real date with 203X; use the game's world clock night if there is one"
+  },
+  {
+   "title": "audit: new systems polish / ladder / jobs / meets",
+   "column": "implementation",
+   "priority": "p2",
+   "tags": [
+    "bug"
+   ],
+   "body": "open items from docs/AUDIT_2026-11.md (new systems polish / ladder / jobs / meets): 4 open, 1 fixed.\n\n- [ ] polish rematches only ever happen once; a second rematch after a long gap would keep the cast alive.\n- [ ] polish a job finished in run 1 of a set you then lose still pays; decide whether jobs need the set.\n- [x] polish the meet's three answers have no keyboard shortcuts (1 / 2 / 3).\n- [ ] polish a set dropped with \"drop it\" isn't in the ledger or the record at all; a \"walked away\" line\n- [ ] polish ladder runs always use the chapter's lot region; mixing in the rival's home region now and"
+  },
+  {
+   "title": "audit: new systems polish / crew / ledger / economy",
+   "column": "planning",
+   "priority": "p2",
+   "tags": [
+    "bug"
+   ],
+   "body": "open items from docs/AUDIT_2026-11.md (new systems polish / crew / ledger / economy): 4 open, 0 fixed.\n\n- [ ] polish the crew never tells you what it skipped for lack of money besides the total; list the top two.\n- [ ] polish the tab has no repayment line on the results (it just comes off the next purse silently?).\n- [ ] polish the p&l chart has no labels for the biggest win / loss rows.\n- [ ] polish `LEDGER.add_run` stamps `t` with the real clock; also store the world night so the panel can"
+  },
+  {
+   "title": "audit: new systems polish / playlist / net",
+   "column": "planning",
+   "priority": "p2",
+   "tags": [
+    "bug"
+   ],
+   "body": "open items from docs/AUDIT_2026-11.md (new systems polish / playlist / net): 3 open, 0 fixed.\n\n- [ ] polish the playlist can hold stages a joining player doesn't have; warn the host when adding one that\n- [ ] polish playlist shuffle can repeat the same stage after one in between with 2-3 entries; keep a short\n- [ ] polish net_smooth's delay is shown nowhere for players; add it to the F4 perf numbers in a session."
+  },
+  {
+   "title": "audit: new systems polish / rev cam / brain screen / interior",
+   "column": "implementation",
+   "priority": "p2",
+   "tags": [
+    "bug"
+   ],
+   "body": "open items from docs/AUDIT_2026-11.md (new systems polish / rev cam / brain screen / interior): 3 open, 1 fixed.\n\n- [ ] polish the rev cam's \"cheap\" camera runs at 12 fps but its picture is still crisp; add some blocky\n- [ ] polish the rev cam screen is dark during the day with the lamps on (dims for night); a brightness\n- [x] polish brain screen pages don't remember the last page between stages.\n- [ ] polish the flip-out screen always stands up; it could fold away when the ignition's off."
+  },
+  {
+   "title": "audit: new systems polish / junctions / osm streets",
+   "column": "planning",
+   "priority": "p2",
+   "tags": [
+    "bug"
+   ],
+   "body": "open items from docs/AUDIT_2026-11.md (new systems polish / junctions / osm streets): 3 open, 0 fixed.\n\n- [ ] polish cones / barricades at a junction are the same at night; a flashing amber lamp on the barricade\n- [ ] polish osm streets that cross the stage under a bridge get no street strip under it (only overpasses).\n- [ ] polish a driveway (`service`) with a parked car in it would look lived in."
+  },
+  {
+   "title": "audit: new systems polish / ffb / wheels",
+   "column": "implementation",
+   "priority": "p2",
+   "tags": [
+    "bug"
+   ],
+   "body": "open items from docs/AUDIT_2026-11.md (new systems polish / ffb / wheels): 1 open, 2 fixed.\n\n- [x] polish wheel base names: \"evo\" (simagic) matches any name containing \"evo\" (e.g. \"revo\"); match\n- [x] polish the bases table is keyed on lower-case substrings in a fixed order; a unit test with a list of\n- [ ] polish auto strength is per base car for the session only (the histogram is lost on quit); keep the"
+  },
+  {
+   "title": "audit: older systems",
+   "column": "implementation",
+   "priority": "p2",
+   "tags": [
+    "bug"
+   ],
+   "body": "open items from docs/AUDIT_2026-11.md (older systems (found while reading around)): 3 open, 4 fixed.\n\n- [ ] perf turn-off \"blocker\" cars at junctions (block = cars) are \"always built, whatever the cap\": on\n- [x] bug `career_map.gd:438` awaits 3.2 s then frees `layer` with no check that the map is still there.\n- [x] bug `main_menu.gd:599` awaits two frames then uses `_backdrop` with no validity check (leaving the\n- [x] bug `meet.gd:471` (career meet) calls `Game.goto_career()` 1.2 s later even if you already left.\n- [x] polish `Replay.list_files` sorts by header unix; files with no unix go last in random order. fall\n- [ ] test brain_screen_test needs a real renderer, but headless it doesn't say so: it hits a null image\n- [ ] polish gauge pod / rev cam / brain screen each do their own dash survey with raycasts on the first"
+  },
+  {
+   "title": "audit: text",
+   "column": "implementation",
+   "priority": "p2",
+   "tags": [
+    "writing"
+   ],
+   "body": "open items from docs/AUDIT_2026-11.md (text): 5 open, 17 fixed.\n\n- [x] text loading_tips:12 is wrong: 1 is the tightest grade, 6 is near flat (pace_notes.gd).\n- [x] text loading_tips:14 is cut off: \"New cars are surveillance devices. Old cars a\".\n- [x] text loading_tips:60 says traction control is off by default; it's on for cars that came with it.\n- [x] text loading_tips:66 says resetting costs time; resets are a free hold now.\n- [x] text loading_tips:71 \"Low spec mode\" is gone (quality presets, Potato).\n- [x] text loading_tips:74 \"more can be downloaded from the lobby\" and the Italian Alps line are stale.\n- [x] text loading_tips:47 \"Oil and grime rises\" \u2192 rise.\n- [x] text loading_quips: bonnet x2, boot (trunk) x4, tacho \u2192 hood, trunk, tach.\n- [x] text feed_posts \"The {car} is dialled\" \u2192 dialed.\n- [x] text walt / gloria \"wheel arch(es)\" \u2192 wheel well(s).\n- [x] text blurbs: rev cam \"Punchy colour\", sensors \"warning colour\", upgrades \"windscreen\", gauge pods\n- [x] text data/characters/README.txt still says \"Stage & Car Setup -> Opponent\" (3 places); it's the Rally\n- [x] text canary_09.txt:174 starts with a space; make sure the reader doesn't take it as a carry-on line.\n- [x] text cctv_pip.gd's comment says the stamp is \"203X-11-02 21:34:07\", the code writes \"11-02-203X\";\n- [ ] text the traffic test header says `--fixed-fps 60` but the CLAUDE.md test flags list doesn't mention\n- [x] text dialogue: \"Well driven\" is in 35 lines now (the review counted 10), \"Full marks\" 4, \"Good on you\"\n- [ ] text 231 character lines open with \"Good run.\" / \"Good race.\"; thin them (review 1.2).\n- [ ] text the payout joke is in 126 character files; keep it to a handful of voices (it's the lore hook).\n- [x] text data/forum/chatter.txt still uses old ids `silver_fox` / `yeller` (6 lines); make sure they\n- [ ] text give every character file a `# shows as: <handle>` first line where the file id differs from the\n- [x] text part_ads.txt has long runs of blank lines between groups; tidy.\n- [ ] text feed_posts.txt / meet_banter.txt are career-only while the career is off: move them under"
+  },
+  {
+   "title": "audit: tests / tooling",
+   "column": "implementation",
+   "priority": "p2",
+   "tags": [
+    "tools"
+   ],
+   "body": "open items from docs/AUDIT_2026-11.md (tests / tooling): 12 open, 2 fixed.\n\n- [ ] test no test covers the cctv (pick-up, follow, drop, restart): add one (would have caught 15).\n- [ ] test no test covers the cooldown shot handing control back (would catch 112).\n- [ ] test no test for the contact judge's cases (rear-end, alongside, head-on, traffic).\n- [ ] test ladder_test doesn't cover a restart mid-set (16).\n- [x] test a scene that loads every script (the cloud check used one) as `src/tools/script_check` so any\n- [ ] test a test runner scene / script that runs every `src/tools/*_test` with its own fps and prints a\n- [ ] test `smoke_test.tscn` sits in src/tools root while all the others are `<name>/test.tscn`; move it so\n- [ ] test tests that need car bodies print hundreds of \"Failed loading resource ... body.blend\" lines\n- [ ] test a data test: every `stage_traffic.COMMON` id, every ladder.txt cast id, every jobs.txt `vs` and\n- [ ] test a test that loads every character file and checks `[feelings]` names, `rematch:` lines and meet\n- [ ] test junction_test only checks geometry; add a draw-call budget per junction block kind (would catch\n- [x] test a replay round-trip test with traffic on (record, save, load, poses match) once 18 is fixed.\n- [ ] test playlist_test doesn't cover shuffle with 2 entries or an entry that's no longer playable.\n- [ ] test crew_ledger_test: a broke player (cash < 0) with a must-do item past the debt floor."
+  },
+  {
+   "title": "audit: docs",
+   "column": "planning",
+   "priority": "p2",
+   "tags": [
+    "bug"
+   ],
+   "body": "open items from docs/AUDIT_2026-11.md (docs): 8 open, 0 fixed.\n\n- [ ] docs CLAUDE.md test list: add traffic_test, ladder_test, crew_ledger_test, playlist_test,\n- [ ] docs README controls table: add F8 (brain screen), F9 recenter view, keypad seat keys.\n- [ ] docs stage_traffic.gd header says \"(No class_name)\" but the CLAUDE.md layout list doesn't mention\n- [ ] docs README mixes player and dev docs (32 KB): split into README (play) + docs/DEV.md (build, bake,\n- [ ] docs README's controls table is stale (missing lights, fogs, tc, ir, ptt, radio, F6-F9, keypad seat)\n- [ ] docs CLAUDE.md is ~100 KB with repeated paragraphs (garage-is-the-menu, garage menus, room dressing):\n- [ ] docs MASTER_PLAN \u00a710 checkboxes are stale (garage menu, livery editor, battle mode shipped).\n- [ ] docs data/characters/README.txt: the `rematch:` key (ladder) and `picture:` key aren't documented."
+  },
+  {
+   "title": "audit: found later",
+   "column": "implementation",
+   "priority": "p2",
+   "tags": [
+    "bug"
+   ],
+   "body": "open items from docs/AUDIT_2026-11.md (found later (the rest of the test suite, round 2 of reading)): 10 open, 15 fixed.\n\n- [x] bug, seen `ghost.gd play()` sets `_wheels[w]` for 4 wheels when the ghost body had no wheel nodes\n- [x] test, seen car_card_test fails on dev: it still checks the inputs add up to v5, brains are v6 now\n- [x] bug, seen battle_test: on the run back the AI only covers 108 m in 20 s (the test wants 120 m+), facing the\n- [x] test, seen body_kit_fit fails in the cloud for wrx_wagon (\"NO SURVEY\") because car bodies don't load\n- [x] text, seen 27 characters are thin on race.net (rivals2_test with its first stop taken out): quadrant and iris\n- [x] bug `race_logs.save()` wrote 0-byte files when the disk was full (the 2026-10-29 C: at 0 bytes). fix:\n- [x] bug 17 places parse a json file with `JSON.parse_string(get_file_as_string())`: an empty file (a\n- [x] bug a sold car's set: forum_climb's \"run 2 of 2\" check uses `wont_run`, which says nothing for a car that's\n- [ ] ux the car check for run 2 (22) only tells you on the forum's status line; the results' \"Run N of M\"\n- [ ] bug contact judge head-on (19) is a racing incident now; a wrong-way car (driving the stage backwards\n- [x] polish the cctv reset (15) doesn't move the camera head home; it swings back over a second or two.\n- [x] perf `race_logs.save()` keeps the last KEEP files by the index only; files the index lost (a crash between\n- [x] bug `Replay.list_files()` now sets broken replays aside as `.bad`; nothing ever deletes the `.bad` files.\n- [x] ux gauge pods: wrx_wagon / civic_ek still get none (6); the warning is once a body per run now (5).\n- [x] polish IR camera moved from N to J (33): saved profiles keep N for both until Controls -> Reset;\n- [ ] test contact_judge cases (136) are pure maths: a `--script` test can cover rear-end / alongside / head-on\n- [ ] test json_file.gd: missing, empty, whitespace, broken, dict, array.\n- [ ] docs CODE_NOTES: add json_file.gd (\"read json files with JSONF.read, not JSON.parse_string\").\n- [x] text loading_new.txt \"AI cars are matched to your power-to-weight now\": \"now\" ages, drop it.\n- [ ] ux traffic_test / stage_traffic: no way to see the traffic amount in a race (the setting only says\n- [x] bug session_results (146): two countdowns can both call `_next_stage`; guard with a `_leaving` flag.\n- [ ] perf `stage_cctv` makes its SubViewport on the first pick-up mid-stage (a hitch right when the feed comes\n- [ ] polish rev cam: the guide lines don't bend with the steering (real ones from the 2010s did on some cars).\n- [ ] ux the forum meet's \"skip\" button skips the whole scene; a second press could finish just the line.\n- [ ] test a test that every `Settings.get_value(\"x\", \"y\", fallback)` fallback matches the default in settings.gd"
+  },
+  {
+   "title": "audit: the rest of the suite",
+   "column": "implementation",
+   "priority": "p2",
+   "tags": [
+    "ui"
+   ],
+   "body": "open items from docs/AUDIT_2026-11.md (the rest of the suite (149 more tests run headless; ones that need a gpu, car bodies, steam or the network left out)): 3 open, 7 fixed.\n\n- [x] bug, seen opponent_tires_test: ocala_trey gets all-terrains (bf_goodwich_ko2) for a tarmac stage.\n- [x] bug, seen tire_balance_test: the shipped `_balance.txt` sheet changes contimental_dws06 (the sheet and the\n- [ ] bug, seen steering_rack_test: \"a race rack should carry more torque to the rim\" (ffb v2 / rack change).\n- [x] bug, seen garage_parts_test: beetle_72 (fonchilada's bug) has 0 wheel options (every car should have 10+).\n- [x] bug, seen ai_beams_test: at night the AI's lights stay dipped with nobody in front.\n- [ ] bug, seen drain_test: Willamette Valley Mud seed 4242 still gains +5 % water in the last 5 min (puddles\n- [x] text, seen rival_record_test: crx_wendy (and the other new \"car + name\" rivals) have no deeper pre-race\n- [x] bug, seen opponent / garage tests that need car bodies crash on a null model (fun_parts_test\n- [x] test, seen player_brain_test checks for 212 inputs; brains are `OBS_SIZE` (218) since v6. [x] fixed in batch 2.\n- [ ] test endless_test, osm_world_test (190 meshes for seattle_i5 buildings, wants few), popup_lamps_test, pc_os_test"
+  },
+  {
+   "title": "audit: batch 2 finds",
+   "column": "implementation",
+   "priority": "p2",
+   "tags": [
+    "bug"
+   ],
+   "body": "open items from docs/AUDIT_2026-11.md (batch 2 finds): 1 open, 5 fixed.\n\n- [x] bug, seen gravel launches crawl: in steering_rack_test (gravel stage start, auto box, full throttle) a stock\n- [x] test, seen rival_record_test expected the banner \"VS WAKE_UP\" (renamed jean_rabbit, pr 526) and\n- [x] perf junction \"open\" signs (36): pause the bob tween with a VisibleOnScreenNotifier3D.\n- [x] bug automatic box: holding the brake at a standstill engages reverse, and only more than half\n- [x] bug, seen police_test: the big-cut reset (pr 579) judged a car from the windowed road index, so a\n- [ ] test, seen police_test sometimes fails \"speeding past the traps never started a chase\" (1 in 3 headless)."
+  },
+  {
+   "title": "audit: batch 4 finds",
+   "column": "implementation",
+   "priority": "p2",
+   "tags": [
+    "bug"
+   ],
+   "body": "open items from docs/AUDIT_2026-11.md (batch 4 finds (2026-11-06, owner's 0.7.7.1 log + the whole suite headless with all 172 car models as glb)): 3 open, 6 fixed.\n\n- [x] bug, seen \"Parse JSON failed ... line 0\" once a minute for 6.5 hours (399 times) while the stats\n- [x] bug, seen wallet.car_cost passed the car id where SHOP.price wants the car's definition: a street\n- [x] bug, seen Car._steer_assist: `bool(src.get(\"assist_ok\"))` on an input without the property (bool(null))\n- [x] bug, seen dust.gd read `dust_k` off any body in `others` (ai_beams_test's stand-in) and the AI's dust\n- [x] bug, seen steam_input._exit_tree called inputShutdown on a Steam that was already gone.\n- [x] test auto_class_test ran out of money since one wallet (pr 599): later builds were \"Card declined\".\n- [ ] bug, seen 1397 x 'Parameter \"material\" is null' (material_casts_shadows / is_animated / update_dependency) in\n- [ ] bug, seen car_icons: no list picture for alcyone_xt / xt6 / svx and ~29 rivals' builds (b:...). Re-run\n- [ ] test gauge_pod_test flags bronco_77 / scout_78 (pod 0.34-0.38 m ahead) and c10 / sky_redline_07 / tbird_89"
+  },
+  {
+   "title": "codebase: One test runner (S)",
+   "column": "planning",
+   "priority": "p2",
+   "tags": [
+    "tech"
+   ],
+   "body": "from docs/CODEBASE_PLAN.md (Oct 22), 1. Safety net first (nothing else is safe to change without it). may already be partly done: check before starting.\n\nA script (`tools/run_tests.py`) that runs every `src/tools/*/test.tscn` headless with its own `XDG_DATA_HOME`, a per-test timeout, and a list of tests that need car models / a renderer (skipped with a note, not failed). Prints one table. Today every test is run by hand with a different flag set (`--fixed-fps 60`, env vars), which is why regressions slip (a prior session found `garage_tv_test` red on dev)."
+  },
+  {
+   "title": "codebase: Fix or quarantine the red / flaky tests (S)",
+   "column": "planning",
+   "priority": "p2",
+   "tags": [
+    "tech"
+   ],
+   "body": "from docs/CODEBASE_PLAN.md (Oct 22), 1. Safety net first (nothing else is safe to change without it). may already be partly done: check before starting.\n\nKnown: `garage_tv_test` \"presses change the driver\" fails on dev; `alldata_test` \"no frame over 34 ms\" flakes under load; `room_*` tests need models. Flaky = timing asserts; use a median-of-N or only assert in `--live` runs."
+  },
+  {
+   "title": "codebase: CI on pull requests (M)",
+   "column": "planning",
+   "priority": "p2",
+   "tags": [
+    "tech"
+   ],
+   "body": "from docs/CODEBASE_PLAN.md (Oct 22), 1. Safety net first (nothing else is safe to change without it). may already be partly done: check before starting.\n\nGitHub Actions: Godot 4.7 headless, the Python lab tests, the runner above, and `check_repo.ps1`-style checks (valid JSON in `docs/patchnotes.json`, no \"tyre\"/km/h in player-visible text, no inferred-Variant errors). The private repo's Actions minutes are the only cost."
+  },
+  {
+   "title": "codebase: A physics regression table (S)",
+   "column": "planning",
+   "priority": "p2",
+   "tags": [
+    "tech"
+   ],
+   "body": "from docs/CODEBASE_PLAN.md (Oct 22), 1. Safety net first (nothing else is safe to change without it). may already be partly done: check before starting.\n\n`handling_test` already prints one line per car (braking distance, lat g, catch time). Commit its output as `docs/baselines/handling.txt` and diff in CI with tolerances, so a tire / suspension change shows its numbers in the PR (the Magic Formula change moved braking 3-4 %)."
+  },
+  {
+   "title": "codebase: B-18 multiplayer crash, never reproduced (M)",
+   "column": "planning",
+   "priority": "p2",
+   "tags": [
+    "tech"
+   ],
+   "body": "from docs/CODEBASE_PLAN.md (Oct 22), 2. Fixes (known problems). may already be partly done: check before starting.\n\nNeeds `godot.log` from the owner. Add a one-click \"send last crash log\" in Settings (the game already writes logs) so the next report arrives with data."
+  },
+  {
+   "title": "codebase: Front wheels collide with something under braking (S-M)",
+   "column": "planning",
+   "priority": "p2",
+   "tags": [
+    "tech"
+   ],
+   "body": "from docs/CODEBASE_PLAN.md (Oct 22), 2. Fixes (known problems). may already be partly done: check before starting.\n\nLikely the body collision box (`collision` in car json: 1.80 wide, 0.66 high, full length) overlapping the wheel / arch volume, or the box touching the ground at full dive (box bottom ~0.07 m above the tire's contact at rest). Add a bench (`handling_test` brake leg, log min box clearance) and fix per car, starting with `mustang_67_fastback` (the ??? car)."
+  },
+  {
+   "title": "codebase: B-05 engine warnings (S)",
+   "column": "planning",
+   "priority": "p2",
+   "tags": [
+    "tech"
+   ],
+   "body": "from docs/CODEBASE_PLAN.md (Oct 22), 2. Fixes (known problems). may already be partly done: check before starting.\n\nOverheat / oil / seize have HUD text now that the middle-of-screen text is off (owner's call); give them a gauge-light or sound instead, or the player gets no warning at all."
+  },
+  {
+   "title": "codebase: Fords / ponds render as a rectangle on Compatibility (M)",
+   "column": "planning",
+   "priority": "p2",
+   "tags": [
+    "tech"
+   ],
+   "body": "from docs/CODEBASE_PLAN.md (Oct 22), 2. Fixes (known problems). may already be partly done: check before starting.\n\nThe water shader hides edges with the depth buffer; live water already avoids it, so the old fixed-water meshes can go once confirmed."
+  },
+  {
+   "title": "codebase: Settings migrations pile up (S)",
+   "column": "planning",
+   "priority": "p2",
+   "tags": [
+    "tech"
+   ],
+   "body": "from docs/CODEBASE_PLAN.md (Oct 22), 2. Fixes (known problems). may already be partly done: check before starting.\n\n7 one-time flags (`*_0764` ...). Fine now; add a version number and one migration function per version so they stop accumulating."
+  },
+  {
+   "title": "codebase: Stale statements in docs (S)",
+   "column": "planning",
+   "priority": "p2",
+   "tags": [
+    "tech"
+   ],
+   "body": "from docs/CODEBASE_PLAN.md (Oct 22), 2. Fixes (known problems). may already be partly done: check before starting.\n\n`CLAUDE.md` still says the garage uses `menu_garage` and describes the removed classic tire model in places; the garage section appears twice. See section 4."
+  },
+  {
+   "title": "codebase: Stage build time (M)",
+   "column": "planning",
+   "priority": "p2",
+   "tags": [
+    "tech"
+   ],
+   "body": "from docs/CODEBASE_PLAN.md (Oct 22), 3. Optimizations. may already be partly done: check before starting.\n\n7 s for 3 mi, 16-20 s for 12 mi headless: terrain mesh 1.6 s, road mesh 1.8 s, scenery 2.5 s, trees 0.4 s. The scenery and road mesh builds are pure data work: move array building to `WorkerThreadPool` (meshes are committed on the main thread), and chunk the endurance case so the loading screen keeps animating (the new live loading screen shows how much it stutters today)."
+  },
+  {
+   "title": "codebase: Tire curve cost (S)",
+   "column": "planning",
+   "priority": "p2",
+   "tags": [
+    "tech"
+   ],
+   "body": "from docs/CODEBASE_PLAN.md (Oct 22), 3. Optimizations. may already be partly done: check before starting.\n\nThe Magic Formula adds one `atan` and one `sin` per wheel per substep (4 wheels x 8 substeps x 120 Hz). Measure with `physics_rate_test`; if it matters, a 256-entry lookup per (C, E) shape (cached already) is exact enough and cheaper."
+  },
+  {
+   "title": "codebase: Physics tick (M)",
+   "column": "planning",
+   "priority": "p2",
+   "tags": [
+    "tech"
+   ],
+   "body": "from docs/CODEBASE_PLAN.md (Oct 22), 3. Optimizations. may already be partly done: check before starting.\n\n`car._physics_process` 167 lines and `wheel.gd` hot paths are the CPU floor. Profile with the F4 perf HUD on a 6-car race before touching: candidates are `Wheel.prepare_surface` (surface lookups per tick), `road_detail.query`, water-sim windows. Keep the \"lite\" physics switch bit-for-bit as is."
+  },
+  {
+   "title": "codebase: Repo and download size (M)",
+   "column": "planning",
+   "priority": "p2",
+   "tags": [
+    "tech"
+   ],
+   "body": "from docs/CODEBASE_PLAN.md (Oct 22), 3. Optimizations. may already be partly done: check before starting.\n\n775 MB `.git`: the 192 dead `.blend` files are excluded from builds but still in history; move model sources to Git LFS (as `assets/music` already is) and consider `git filter-repo` on a mirror to drop dead blobs. Check texture import sizes (`.godot/imported`) for car models > 2K."
+  },
+  {
+   "title": "codebase: Startup (S)",
+   "column": "planning",
+   "priority": "p2",
+   "tags": [
+    "tech"
+   ],
+   "body": "from docs/CODEBASE_PLAN.md (Oct 22), 3. Optimizations. may already be partly done: check before starting.\n\nBoot waits up to 6 s for the menu prewarm; measure cold start on the Potato preset."
+  },
+  {
+   "title": "codebase: Split `CLAUDE.md` (S, high value)",
+   "column": "planning",
+   "priority": "p2",
+   "tags": [
+    "tech"
+   ],
+   "body": "from docs/CODEBASE_PLAN.md (Oct 22), 4. Structure and docs. may already be partly done: check before starting.\n\n112 KB loaded into every session costs tokens and hides the current rules. Keep a 10-15 KB index (rules, layout, workflow, gotchas) and move each feature note into `docs/features/<area>.md` with a one-line pointer. Fix the duplicated garage paragraph and stale facts while moving."
+  },
+  {
+   "title": "codebase: Break up the giants (L, incremental)",
+   "column": "planning",
+   "priority": "p2",
+   "tags": [
+    "tech"
+   ],
+   "body": "from docs/CODEBASE_PLAN.md (Oct 22), 4. Structure and docs. may already be partly done: check before starting.\n\nFollow the pattern the code already uses (`car_damage.gd`, `body_panels.gd`, `aero_parts.gd` are preload modules owned by `Car`): extract from `car.gd` the suspension / geometry (`_setup_geo`, `_geo_jacks`), steering assist + rack glue, intake / heat, and net-state; from `race.gd` the start sequence (`_rolling_start`, `_formation`), results / wire / telemetry; from `ai_driver.gd` the crash / jump / rails code; from `track_generator.gd` `_gen_*` layouts. One module per PR, behavior pinned by the existing tests; never mix a move with a change."
+  },
+  {
+   "title": "codebase: Dead and legacy code (M)",
+   "column": "planning",
+   "priority": "p2",
+   "tags": [
+    "tech"
+   ],
+   "body": "from docs/CODEBASE_PLAN.md (Oct 22), 4. Structure and docs. may already be partly done: check before starting.\n\n(a) The old part-based class rules behind `[power] only = 0` (6 branches in `car_classes.gd`, plus `_legacy()` in tests): keep or delete, owner's call (it doubles the test matrix). (b) Career: `src/career/` 2,564 lines + references in 37 files with `CAREER_ENABLED = false` - decide remove vs rework; if remove, do it in one PR with the tests. (c) Placeholder `props/*.tscn` fallbacks."
+  },
+  {
+   "title": "codebase: Types and conventions (S)",
+   "column": "planning",
+   "priority": "p2",
+   "tags": [
+    "tech"
+   ],
+   "body": "from docs/CODEBASE_PLAN.md (Oct 22), 4. Structure and docs. may already be partly done: check before starting.\n\nThe project treats inferred-Variant as an error; a CI lint for the common mistake (`var x := dict.key`) would catch it before a headless run does."
+  }
+ ]
+}

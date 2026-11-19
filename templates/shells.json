@@ -1,0 +1,31 @@
+{
+ "game": "shells",
+ "name": "SHELLS",
+ "cards": [
+  {
+   "title": "gunplay demo: range on security deck C-2",
+   "column": "implementation",
+   "priority": "p1",
+   "tags": [
+    "combat"
+   ],
+   "body": "the first slice from the README: nail how the guns feel before anything else gets built on top.\n\n- [x] the Mk 23 standard issue, built off FOR/AGAINST's Glock frame\n- [x] ammo types in mags: FMJ, AP, hollow point, frangible, incendiary, shock, subsonic, tracer\n- [x] found guns from the FOR/AGAINST armory: M4A1, AK-74M, SIG MPX, MWS 6.5, Benelli M4\n- [x] simulated rounds: muzzle speed, drop, drag\n- [x] recoil: Tarkov pull-down + Halo recovery\n- [x] ADS onto the real optic, proper 4x scope picture\n- [x] procedural viewmodel: sway, bob, springs, reloads, casings\n- [x] diegetic UI: ammo on the gun, stats board over the lanes\n- [x] targets: zoned mannequins, armored, mover, gongs, security drone"
+  },
+  {
+   "title": "decide the slice after the gunplay demo",
+   "column": "planning",
+   "priority": "p2",
+   "tags": [
+    "design"
+   ],
+   "body": "SHELLS is now a tactical FPS survival horror on a dead colony ship (you're a security guard). the README stops at the gun range."
+  },
+  {
+   "title": "old pvp shooter wiped for the fresh start",
+   "column": "shipped",
+   "tags": [
+    "tech"
+   ]
+  }
+ ]
+}

@@ -494,7 +494,12 @@ function renderBoard() {
       <span class="grow"></span>
       ${B.error ? `<span class="tag bad">${esc(B.error)}</span> <button class="small" id="bRetry">retry</button>` : B.loading ? '<span class="dim">syncing…</span>' : `<span class="dim" style="font-size:12px">synced ${B.at ? ago(B.at) : ''}</span>`}
     </div>
-    ${tpl && onBoard < 5 && B.loaded ? `<div class="notice" style="margin-bottom:12px"><div class="grow"><b>${esc(viewGame.name)} board is empty.</b> <span class="dim">load the starter board: ${tpl.cards} cards from the game's docs (status, design plans, known issues).</span></div><button class="pri" id="bTpl">load starter board</button></div>` : ''}
+    ${B.loaded && !B.cards.length ? (() => {
+      const avail = S.state.games.filter(g => S.templates[g.id]);
+      const n = avail.reduce((a, g) => a + S.templates[g.id].cards, 0);
+      return avail.length ? `<div class="notice" style="margin-bottom:12px"><div class="grow"><b>the board is empty.</b> <span class="dim">load the starter boards: ${n} cards for ${avail.map(g => esc(g.name)).join(', ')}, made from each game's own docs (backlogs, audits, plans, status). you can edit or delete any of them.</span></div><button class="pri" id="bTplAll">load starter boards</button></div>` : '';
+    })() : ''}
+    ${tpl && onBoard < 5 && B.loaded && B.cards.length ? `<div class="notice" style="margin-bottom:12px"><div class="grow"><b>${esc(viewGame.name)} board is empty.</b> <span class="dim">load the starter board: ${tpl.cards} cards from the game's docs (status, design plans, known issues).</span></div><button class="pri" id="bTpl">load starter board</button></div>` : ''}
     ${!B.loaded && !B.error ? '<div class="empty">loading the board…</div>' : `<div class="board">${S.state.columns.map(col => {
       let list = sortCards(cards.filter(c => c.column === col));
       const total = list.length, cap = col === 'shipped' && !B.allDone ? 12 : 1e9;
@@ -514,6 +519,7 @@ function renderBoard() {
   if ($('#bClear')) $('#bClear').onclick = () => { B.q = ''; B.mine = false; B.prio = ''; B.tag = ''; renderBoard(); };
   if ($('#bRetry')) $('#bRetry').onclick = () => loadBoard(true);
   if ($('#bMoreDone')) $('#bMoreDone').onclick = () => { B.allDone = true; renderBoard(); };
+  if ($('#bTplAll')) $('#bTplAll').onclick = () => runJob(api('/api/board/import', { body: { game: 'all' } }), () => loadBoard(true));
   if ($('#bTpl')) $('#bTpl').onclick = () => runJob(api('/api/board/import', { body: { game: B.view } }), () => loadBoard(true));
   $$('[data-quick]', p).forEach(inp => inp.onkeydown = async e => {
     if (e.key !== 'Enter' || !inp.value.trim()) return;

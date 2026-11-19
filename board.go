@@ -377,6 +377,18 @@ func loadTemplates() map[string]Template {
 // importTemplate adds a game's starter cards, skipping titles already on the board. Paced so
 // github's anti-spam limit on creating issues doesn't kick in.
 func (s *Server) importTemplate(j *Job, game string) error {
+	if game == "all" { // every game in the studio that has a starter board
+		tpls := loadTemplates()
+		for _, g := range s.team().Games {
+			if _, ok := tpls[g.ID]; ok {
+				j.Printf("\n== %s ==\n", g.Name)
+				if err := s.importTemplate(j, g.ID); err != nil {
+					return err
+				}
+			}
+		}
+		return nil
+	}
 	t, ok := loadTemplates()[game]
 	if !ok {
 		return fmt.Errorf("no starter board for %s", game)
