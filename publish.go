@@ -40,7 +40,10 @@ type ghJobs struct {
 func publishKinds(g Game) []string {
 	var k []string
 	if g.Release != nil && g.Release.Workflow != "" {
-		k = append(k, "update", "hotfix")
+		k = append(k, "update")
+		if g.Release.Hotfix != nil {
+			k = append(k, "hotfix")
+		}
 		if g.Release.Test != nil {
 			k = append(k, "test")
 		}

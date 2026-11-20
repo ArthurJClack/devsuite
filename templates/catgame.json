@@ -1,0 +1,87 @@
+{
+ "game": "catgame",
+ "name": "CAT GAME",
+ "cards": [
+  {
+   "title": "biomech physics sheet",
+   "column": "qa",
+   "priority": "p2",
+   "tags": [
+    "feature"
+   ],
+   "body": "on branch `pr-previews`, 16 commits not on main yet (as of nov 19). test it, then merge to main: every push to main publishes a release.\n\n- [ ] play it\n- [ ] merge pr-previews into main"
+  },
+  {
+   "title": "biomech passes (pass 9: paw drive, swing legs, knee under the back)",
+   "column": "qa",
+   "priority": "p2",
+   "tags": [
+    "feature"
+   ],
+   "body": "on branch `biomech-lab`, 10 commits not on main yet (as of nov 19). test it, then merge to main: every push to main publishes a release.\n\n- [ ] play it\n- [ ] merge biomech-lab into main"
+  },
+  {
+   "title": "slide down things the cat can't climb",
+   "column": "qa",
+   "priority": "p2",
+   "tags": [
+    "feature"
+   ],
+   "body": "on branch `slide-down`, 1 commit not on main yet (as of nov 19). test it, then merge to main: every push to main publishes a release.\n\n- [ ] play it\n- [ ] merge slide-down into main"
+  },
+  {
+   "title": "pounce lands exactly (capsule-traced line, paw circles)",
+   "column": "qa",
+   "priority": "p2",
+   "tags": [
+    "feature"
+   ],
+   "body": "on branch `pounce-exact`, 1 commit not on main yet (as of nov 19). test it, then merge to main: every push to main publishes a release.\n\n- [ ] play it\n- [ ] merge pounce-exact into main"
+  },
+  {
+   "title": "drawn ground matches collision so paws touch it",
+   "column": "qa",
+   "priority": "p2",
+   "tags": [
+    "feature"
+   ],
+   "body": "on branch `ground-contact`, 1 commit not on main yet (as of nov 19). test it, then merge to main: every push to main publishes a release.\n\n- [ ] play it\n- [ ] merge ground-contact into main"
+  },
+  {
+   "title": "free climbing: walls, trunks, posts, corners",
+   "column": "qa",
+   "priority": "p2",
+   "tags": [
+    "feature"
+   ],
+   "body": "on branch `free-climb`, 1 commit not on main yet (as of nov 19). test it, then merge to main: every push to main publishes a release.\n\n- [ ] play it\n- [ ] merge free-climb into main"
+  },
+  {
+   "title": "psx: crate/container near-wall winding fix",
+   "column": "qa",
+   "priority": "p2",
+   "tags": [
+    "bug"
+   ],
+   "body": "on branch `fix-crate-near-walls`, 1 commit not on main yet (as of nov 19). test it, then merge to main: every push to main publishes a release.\n\n- [ ] play it\n- [ ] merge fix-crate-near-walls into main"
+  },
+  {
+   "title": "gamepad: ignore axes parked off centre",
+   "column": "qa",
+   "priority": "p2",
+   "tags": [
+    "bug"
+   ],
+   "body": "on branch `fix-stuck-look`, 1 commit not on main yet (as of nov 19). test it, then merge to main: every push to main publishes a release.\n\n- [ ] play it\n- [ ] merge fix-stuck-look into main"
+  },
+  {
+   "title": "steam multiplayer + dedicated server",
+   "column": "planning",
+   "priority": "p2",
+   "tags": [
+    "steam"
+   ],
+   "body": "README: play online via the m lobby; branches steam-multiplayer and steam-dedicated-server exist (merged state not checked)."
+  }
+ ]
+}

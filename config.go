@@ -79,6 +79,9 @@ func defaultTeam() Team {
 			{ID: "shitbox", Name: "SHITBOX RALLY", Genre: "racing", Repo: "ArthurJClack/shitbox-rally", Releases: "ArthurJClack/shitboxrally-releases",
 				Engine: "godot", Color: "#ffd166", Publish: "tools/publish_update.bat --yes", Hotfix: "tools/publish_update.bat --hotfix --yes",
 				Tools: []Tool{{Name: "shitbox dashboard", Path: "Shitbox Dashboard.bat"}}},
+			// every push to main publishes a release (its release.yml); "dev → main" is the ship button
+			{ID: "catgame", Name: "CAT GAME", Genre: "puzzle", Repo: "ArthurJClack/catgame", Releases: "ArthurJClack/catgame",
+				Engine: "godot", Color: "#f4a261", Release: &ReleaseCfg{Workflow: "release.yml", Ref: "main", Update: map[string]string{}}},
 		},
 	}
 }
