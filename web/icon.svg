@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect x="16" y="16" width="480" height="480" rx="112" fill="#ff7a59"/>
+  <!-- cat head -->
+  <g fill="#0d0d10">
+    <path d="M96 236 L112 76 L212 156 Q256 146 300 156 L400 76 L416 236 Q424 380 256 400 Q88 380 96 236Z"/>
+  </g>
+  <!-- inner ears -->
+  <path d="M128 112 L136 190 L188 152Z" fill="#2a2a33"/>
+  <path d="M384 112 L376 190 L324 152Z" fill="#2a2a33"/>
+  <!-- eyes -->
+  <ellipse cx="190" cy="248" rx="40" ry="34" fill="#ffd21f"/>
+  <ellipse cx="322" cy="248" rx="40" ry="34" fill="#ffd21f"/>
+  <ellipse cx="190" cy="250" rx="9" ry="28" fill="#0d0d10"/>
+  <ellipse cx="322" cy="250" rx="9" ry="28" fill="#0d0d10"/>
+  <circle cx="204" cy="236" r="7" fill="#fff"/>
+  <circle cx="336" cy="236" r="7" fill="#fff"/>
+  <!-- nose -->
+  <path d="M244 300 h24 l-12 13z" fill="#ff8fa3"/>
+  <!-- fish in mouth -->
+  <g transform="translate(256 352) rotate(-8)">
+    <path d="M-120 0 C-80 -44 40 -44 80 0 C40 44 -80 44 -120 0Z" fill="#8fd3ff" stroke="#0d0d10" stroke-width="8"/>
+    <path d="M76 0 L140 -40 L128 0 L140 40Z" fill="#8fd3ff" stroke="#0d0d10" stroke-width="8" stroke-linejoin="round"/>
+    <circle cx="-86" cy="-6" r="8" fill="#0d0d10"/>
+    <path d="M-50 -24 q12 24 0 48" fill="none" stroke="#0d0d10" stroke-width="7" stroke-linecap="round"/>
+  </g>
+</svg>

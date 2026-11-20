@@ -24,11 +24,9 @@ code, pre, .mono { font-family: var(--mono); }
 #app { display: grid; grid-template-columns: 210px 1fr; height: 100vh; }
 #side { background: #0a0f15cc; border-right: 1px solid var(--line); display: flex; flex-direction: column; padding: 16px 12px; gap: 18px; }
 .brand { display: flex; gap: 10px; align-items: center; }
+.brand .logo { width: 40px; height: 40px; flex: none; }
 .brand b { font-family: silk; font-weight: normal; font-size: 13px; line-height: 1.2; display: block; }
 .brand small { font-family: vt; font-size: 18px; color: var(--salmon); }
-.fish { width: 44px; height: 22px; flex: none; }
-.fish path:first-child, .fish path:nth-child(2) { fill: var(--salmon); }
-.fish .eye { fill: var(--bg); } .fish .gill { fill: none; stroke: #b9463099; stroke-width: 2; }
 #nav { display: flex; flex-direction: column; gap: 2px; }
 #nav a { padding: 8px 10px; border-radius: 8px; color: var(--dim); cursor: pointer; font-family: silk; font-size: 12px; display: flex; justify-content: space-between; }
 #nav a:hover { background: var(--panel); color: var(--ink); text-decoration: none; }
@@ -145,7 +143,7 @@ td.ck { text-align: center; } th.ck { text-align: center; }
 .notice { background: #ff7a5914; border: 1px solid #ff7a5955; border-radius: var(--r); padding: 12px 14px; display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
 .notice .grow { flex: 1; min-width: 200px; }
 .signin { max-width: 520px; margin: 8vh auto; }
-.signin .fish { width: 90px; height: 45px; margin-bottom: 12px; }
+.signin .logo { width: 96px; height: 96px; margin-bottom: 12px; }
 .empty { color: var(--dim); text-align: center; padding: 26px 8px; font-size: 13px; }
 
 @media (max-width: 760px) {

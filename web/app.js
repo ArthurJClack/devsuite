@@ -252,7 +252,7 @@ function renderSignin() {
   const p = $('#page-dash'); p.classList.add('on');
   const scopes = 'https://github.com/settings/tokens/new?scopes=repo,read:org,workflow&description=hq%20(' + encodeURIComponent(S.state.studio || 'studio') + ')';
   p.innerHTML = `<div class="signin panel">
-    <svg viewBox="0 0 64 32" class="fish"><path d="M4 16C14 2 34 2 46 16 34 30 14 30 4 16Z" fill="#ff7a59"/><path d="M46 16 60 5v22Z" fill="#ff7a59"/><circle cx="14" cy="14" r="2.4" fill="#0b1016"/></svg>
+    <img src="icon.svg" class="logo" alt="" width="96" height="96">
     <h1>${esc(S.state.studio)}</h1><p class="dim">sign in with github to get the games, the board and the chat.</p>
     ${S.state.authError ? `<p class="tag bad">${esc(S.state.authError)}</p>` : ''}
     <div class="btns"><button class="ice" id="useCli">use my github cli login</button></div>
