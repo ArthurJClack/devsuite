@@ -382,6 +382,7 @@ func (s *Server) apiState(w http.ResponseWriter, r *http.Request) (any, error) {
 	}
 	wg.Wait()
 	out["games"] = games
+	out["newGames"] = missingBuiltins(t)
 	return out, nil
 }
 

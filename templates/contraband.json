@@ -1,0 +1,20 @@
+{
+ "game": "contraband",
+ "name": "CONTRABAND",
+ "cards": [
+  {"title": "make the repos + releases token", "column": "planning", "priority": "p0", "tags": ["setup"],
+   "body": "- [ ] create ArthurJClack/contraband (private) and ArthurJClack/contraband-releases (public)\n- [ ] push main + dev\n- [ ] fine-grained token for contraband-releases (contents: read/write) as the RELEASES_TOKEN secret\n- [ ] first publish (update) from hq"},
+  {"title": "milestone 0: foundation", "column": "qa", "priority": "p1", "tags": ["feature"],
+   "body": "night road, hybrid WRX wagon, passenger first person with suppressed guns + lasers + AP rounds, split-screen and VR + screen co-op, MGS2 ui, garage, updater + installer.\n\n- [ ] play solo\n- [ ] play split screen\n- [ ] try VR + screen on a headset"},
+  {"title": "milestone 1: hybrid and lights on shitbox's car", "column": "planning", "priority": "p2", "tags": ["feature"],
+   "body": "- [ ] copy shitbox car, drivetrain, wheel, native core, input manager, VR, wheel bridge\n- [ ] hybrid.gd on the real drivetrain\n- [ ] blackout, IR lamps, dome light, VR switch panel"},
+  {"title": "milestone 2: cargo physics", "column": "planning", "priority": "p2", "tags": ["feature"],
+   "body": "- [ ] cabin physics space, sliding items, impulses into car + FFB\n- [ ] belts, straps, rattle, condition\n- [ ] loading on hands / mouse / pad / wheel, auto-pack"},
+  {"title": "milestone 3: world slice", "column": "planning", "priority": "p2", "tags": ["feature"],
+   "body": "- [ ] lidar + OSM baker into 1 km tiles\n- [ ] streamer, road graph, traffic\n- [ ] night clock, moon, weather fronts"},
+  {"title": "milestone 4: guards and cameras (FOR/AGAINST sim)", "column": "planning", "priority": "p2", "tags": ["feature"],
+   "body": "- [ ] vendor src/sim, vehicle target, signature bridge\n- [ ] checkpoint, PTZ + ALPR cameras, patrol truck\n- [ ] alert director, roadblocks, pursuit"},
+  {"title": "milestone 6: in-car FPS on fa_fps / fa_sight_gun", "column": "planning", "priority": "p2", "tags": ["feature"],
+   "body": "- [ ] sway, optics, hands from FOR/AGAINST\n- [ ] glass deflection, window arcs per car\n- [ ] tires, fires, explosions, wounds"}
+ ]
+}

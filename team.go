@@ -130,6 +130,22 @@ func withDefaults(t Team) Team {
 	return t
 }
 
+// missingBuiltins: games built into this hq that the studio's shared list doesn't have yet
+// (a new game added to hq), so the games page can offer to add them in one click.
+func missingBuiltins(t Team) []Game {
+	have := map[string]bool{}
+	for _, g := range t.Games {
+		have[g.ID] = true
+	}
+	out := []Game{}
+	for _, g := range defaultTeam().Games {
+		if !have[g.ID] {
+			out = append(out, g)
+		}
+	}
+	return out
+}
+
 func (s *Server) setTeam(t *Team) {
 	s.teamMu.Lock()
 	s.teamAt = time.Now()

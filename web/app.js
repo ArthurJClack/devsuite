@@ -395,7 +395,9 @@ async function showJob(id) {
 // ---------- games
 function renderGames() {
   const p = $('#page-games');
-  p.innerHTML = `<div class="head"><h1>games</h1><span class="dim mono">${esc(S.state.workspace)}</span><span class="grow"></span><button class="ice small" data-all="pull">⟳ update all</button><button class="small" data-all="push">↑ push all</button><button class="ghost small" id="gFetch">check github</button><button class="small" id="gEdit">edit games list</button></div>
+  const fresh = (S.state.newGames || []).filter(g => !localStorage.getItem('hq-skip-' + g.id));
+  const offer = fresh.map(g => `<div class="notice"><div class="grow"><b>new game in hq: ${esc(g.name)}</b> <span class="dim">${esc(g.genre)} · ${esc(g.repo)}. add it to the studio's games list?</span></div><button class="small pri" data-addgame="${esc(g.id)}">add it</button><button class="small ghost" data-skipgame="${esc(g.id)}">not now</button></div>`).join('');
+  p.innerHTML = offer + `<div class="head"><h1>games</h1><span class="dim mono">${esc(S.state.workspace)}</span><span class="grow"></span><button class="ice small" data-all="pull">⟳ update all</button><button class="small" data-all="push">↑ push all</button><button class="ghost small" id="gFetch">check github</button><button class="small" id="gEdit">edit games list</button></div>
     <div class="grid cols-2">${S.state.games.map(g => {
       const l = g.local;
       return `<div class="panel gcard" style="--c:${esc(g.color || '#8fd3ff')}" data-game="${esc(g.id)}">
@@ -426,6 +428,12 @@ function renderGames() {
   bindTiles(p);
   bindSyncAll(p);
   $('#gEdit').onclick = editGames;
+  $$('[data-addgame]', p).forEach(b => b.onclick = async () => {
+    const add = (S.state.newGames || []).find(g => g.id === b.dataset.addgame);
+    const games = S.state.games.map(({ local, publishKinds, ...g }) => g).concat([add]);
+    try { await api('/api/games', { body: { games } }); toast(add.name.toLowerCase() + ' added'); refresh(true); } catch (e) { fail(e); }
+  });
+  $$('[data-skipgame]', p).forEach(b => b.onclick = () => { localStorage.setItem('hq-skip-' + b.dataset.skipgame, '1'); renderGames(); });
   $('#gFetch').onclick = async () => { toast('checking github…'); try { await api('/api/fetch', { body: {} }); await refresh(); toast('checked'); } catch (e) { fail(e); } };
   $$('[data-log]', p).forEach(a => a.onclick = () => showJob(a.dataset.log));
   $$('[data-editgames]', p).forEach(a => a.onclick = editGames);
