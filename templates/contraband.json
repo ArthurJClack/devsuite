@@ -3,7 +3,7 @@
  "name": "CONTRABAND",
  "cards": [
   {"title": "make the repos + releases token", "column": "planning", "priority": "p0", "tags": ["setup"],
-   "body": "- [ ] create ArthurJClack/contraband (private) and ArthurJClack/contraband-releases (public)\n- [ ] push main + dev\n- [ ] fine-grained token for contraband-releases (contents: read/write) as the RELEASES_TOKEN secret\n- [ ] first publish (update) from hq"},
+   "body": "- [x] create ArthurJClack/ArthurJClack-contraband (private) and ArthurJClack/ArthurJClack-contraband-releases (public: players download from it)\n- [x] push main + dev\n- [ ] fine-grained token for contraband-releases (contents: read/write) as the RELEASES_TOKEN secret\n- [ ] first publish (update) from hq"},
   {"title": "milestone 0: foundation", "column": "qa", "priority": "p1", "tags": ["feature"],
    "body": "night road, hybrid WRX wagon, passenger first person with suppressed guns + lasers + AP rounds, split-screen and VR + screen co-op, MGS2 ui, garage, updater + installer.\n\n- [ ] play solo\n- [ ] play split screen\n- [ ] try VR + screen on a headset"},
   {"title": "milestone 1: hybrid and lights on shitbox's car", "column": "planning", "priority": "p2", "tags": ["feature"],
