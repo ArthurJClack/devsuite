@@ -500,12 +500,7 @@ func (s *Server) apiGameOp(w http.ResponseWriter, r *http.Request) (any, error) 
 				return fmt.Errorf("no project.godot on %s's dev branch", g.Name)
 			}
 			j.Printf("dev is at %s\n", gitQuick(dir, "log", "-1", "--format=%h %s (%an, %ar)"))
-			if !dirExists(filepath.Join(proj, ".godot")) {
-				j.Printf("first time: importing assets, can take a few minutes…\n")
-				if _, err := j.Run(proj, godot, "--headless", "--path", proj, "--import"); err != nil {
-					j.Printf("import exited with an error, trying to launch anyway\n")
-				}
-			}
+			ensureImported(j, godot, proj)
 			j.Printf("launching…\n")
 			return startDetached(godot, "--path", proj)
 		}), nil
@@ -526,11 +521,17 @@ func (s *Server) apiGameOp(w http.ResponseWriter, r *http.Request) (any, error) 
 		if proj == "" {
 			return nil, fmt.Errorf("no project.godot in %s", dir)
 		}
-		args := []string{"--path", proj}
 		if op == "editor" {
-			args = append([]string{"-e"}, args...)
+			return ok(), startDetached(godot, "-e", "--path", proj)
 		}
-		return ok(), startDetached(godot, args...)
+		if importedAt(proj) == gitQuick(proj, "rev-parse", "HEAD") {
+			return ok(), startDetached(godot, "--path", proj)
+		}
+		return s.jobs.Start("play · "+g.Name, g.ID, env, func(j *Job) error {
+			ensureImported(j, godot, proj)
+			j.Printf("launching…\n")
+			return startDetached(godot, "--path", proj)
+		}), nil
 	case "publish", "hotfix", "test":
 		kind := map[string]string{"publish": "update", "hotfix": "hotfix", "test": "test"}[r.PathValue("op")]
 		return s.startPublish(g, kind)
