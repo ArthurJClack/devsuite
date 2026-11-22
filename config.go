@@ -80,11 +80,9 @@ func defaultTeam() Team {
 				Engine: "godot", Color: "#ffd166", Publish: "tools/publish_update.bat --yes", Hotfix: "tools/publish_update.bat --hotfix --yes",
 				Tools: []Tool{{Name: "shitbox dashboard", Path: "Shitbox Dashboard.bat"}}},
 			// every push to main publishes a release (its release.yml); "dev → main" is the ship button
+			// a fork of shitbox rally; its release pipeline isn't rebranded yet, so no publish button for now
 			{ID: "contraband", Name: "CONTRABAND", Genre: "stealth driving", Repo: "ArthurJClack/ArthurJClack-contraband", Releases: "ArthurJClack/ArthurJClack-contraband-releases",
-				Engine: "godot", Color: "#3ad1e8", Release: &ReleaseCfg{Workflow: "release.yml", Ref: "main",
-					Update: map[string]string{"kind": "update", "dry_run": "false"},
-					Hotfix: map[string]string{"kind": "hotfix", "dry_run": "false"},
-					Test:   map[string]string{"kind": "update", "dry_run": "true"}}},
+				Engine: "godot", Color: "#3ad1e8"},
 			{ID: "catgame", Name: "CAT GAME", Genre: "puzzle", Repo: "ArthurJClack/catgame", Releases: "ArthurJClack/catgame",
 				Engine: "godot", Color: "#f4a261", Release: &ReleaseCfg{Workflow: "release.yml", Ref: "main", Update: map[string]string{}}},
 		},
